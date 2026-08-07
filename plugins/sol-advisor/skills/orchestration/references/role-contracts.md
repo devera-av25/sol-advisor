@@ -1,74 +1,101 @@
 # Native Codex role contracts
 
-Use these contracts with Sol Advisor's namespaced native agents. The normal primary is
-GPT-5.6 Sol / Medium. High reasoning is invoked only at a material planning,
-implementation, or review boundary.
+The normal primary is GPT-5.6 Terra / Medium. Planning and verification scale upward
+independently and only when evidence justifies the extra reasoning/model cost.
 
 ## Required preflight
 
 Before the first native spawn in a fresh primary task:
 
-1. Require `install-agents.sh --check` to prove all six installed profiles match.
+1. Require `install-agents.sh --check` to prove all eight installed profiles match.
 2. Require native exposure of:
    - `sol_advisor_luna_low_implementer`
    - `sol_advisor_luna_implementer`
    - `sol_advisor_terra_implementer`
-   - `sol_advisor_sol_planner`
+   - `sol_advisor_terra_high_consultant`
+   - `sol_advisor_sol_low_consultant`
+   - `sol_advisor_sol_medium_consultant`
    - `sol_advisor_sol_implementer`
    - `sol_advisor_sol_reviewer`
-3. Accept only these observed pins when metadata exposes them:
-   - Luna / Low for `sol_advisor_luna_low_implementer`
-   - Luna / Medium for `sol_advisor_luna_implementer`
-   - Terra / Medium for `sol_advisor_terra_implementer`
-   - Sol / High for `sol_advisor_sol_planner`
-   - Sol / High for `sol_advisor_sol_implementer`
-   - Sol / High for `sol_advisor_sol_reviewer`
-4. Use the local runtime inspector only for metadata fields the host omits.
+3. Accept only these pins when runtime metadata exposes them:
+   - Luna / Low
+   - Luna / Medium
+   - Terra implementer / Medium
+   - Terra consultant / High
+   - Sol consultant / Low
+   - Sol consultant / Medium
+   - Sol implementer / High
+   - Sol reviewer / High
+4. Use the local runtime inspector only for omitted metadata fields.
 
 Reuse a successful preflight within the same primary task unless runtime/configuration
 evidence changes. Never silently fall back.
 
-## Sol / High planning consult
+## Read-only consultant contract
 
-Spawn only when the Sol / Medium primary hits a material planning boundary:
-
-~~~text
-agent_type: sol_advisor_sol_planner
-fork_turns: none
-~~~
-
-The planner is read-only by behavior and requests read-only sandboxing. Send only the
-context needed to resolve the decision.
+The three consultant profiles can perform either planning or verification. The prompt
+must set `MODE` explicitly.
 
 ~~~text
-ROLE
-Resolve this planning boundary without implementing code or broadening scope.
+MODE: planning | verification
 
 OBJECTIVE
-<What outcome must be achieved?>
+<One concise outcome.>
 
 RELEVANT CONTEXT
-- <only files/interfaces/constraints needed for the decision>
+- <only paths/interfaces/constraints needed>
 
-QUESTION
-<The architecture/interface/decomposition decision that materially changes execution.>
+QUESTION OR EVIDENCE
+<planning decision to resolve, or verification evidence/change set to judge>
 
 RETURN
-DECISION: <concise chosen approach>
-INTERFACES: <contracts to preserve/create>
-OWNERSHIP: <implementation boundaries>
-RISKS: <material risks only>
-VERIFICATION: <acceptance checks>
-RECOMMENDED EXECUTION LANE: luna-low | luna-medium | terra-medium | sol-high
-BLOCKERS: none | <unresolved blocker>
+DECISION/VERDICT: <concise result>
+REASON: <decisive evidence>
+RISKS/FINDINGS: <material items or none>
+NEXT TIER: none | terra-high | sol-low | sol-medium | sol-high-review
 ~~~
 
-Do not ask the planner to restate the whole codebase or produce implementation code.
+For planning, `sol-high-review` is invalid: Sol / Medium is the maximum normal planning
+tier. Consultants never edit files or implement fixes.
 
-## Compact Luna / Low contract
+## Planning ladder
 
-Use for deterministic low-risk work. The worker should implement; the primary performs
-the single final acceptance test run.
+Start in the Terra / Medium primary.
+
+### Terra / High consultant
+
+~~~text
+agent_type: sol_advisor_terra_high_consultant
+fork_turns: none
+MODE: planning
+~~~
+
+Use when the same Terra model is capable but the planning decision needs more reasoning.
+If a stronger model is genuinely required, recommend Sol / Low.
+
+### Sol / Low consultant
+
+~~~text
+agent_type: sol_advisor_sol_low_consultant
+fork_turns: none
+MODE: planning
+~~~
+
+Use only after the decision is judged capability-bound rather than merely effort-bound.
+Start the stronger Sol model at Low. Escalate to Sol / Medium only with evidence.
+
+### Sol / Medium consultant
+
+~~~text
+agent_type: sol_advisor_sol_medium_consultant
+fork_turns: none
+MODE: planning
+~~~
+
+This is the maximum normal planning tier. If material ambiguity remains, return a
+blocker to the primary rather than escalating planning to Sol / High.
+
+## Compact Luna / Low implementation contract
 
 ~~~text
 ROLE
@@ -88,7 +115,7 @@ ACCEPTANCE
 - <compatibility constraint if any>
 
 PARENT VERIFICATION
-The parent will run: <targeted command>
+The primary will run: <targeted command>
 Do not rerun the final suite merely for reporting. Use only minimal self-checks needed
 while implementing.
 
@@ -103,7 +130,7 @@ Do not return the full diff; the primary inspects it directly.
 
 ## Full implementation contract
 
-Use only when the task actually needs more context than the compact packet.
+Use when more context is genuinely needed.
 
 ~~~text
 OBJECTIVE
@@ -122,7 +149,7 @@ CONSTRAINTS
 
 VERIFICATION
 - <checks useful during implementation>
-- Parent final acceptance check: <targeted final command>
+- Primary final acceptance check: <targeted command>
 
 RETURN
 STATUS: complete | partial | blocked | escalate
@@ -142,8 +169,8 @@ agent_type: sol_advisor_luna_low_implementer
 fork_turns: none
 ~~~
 
-Use for copy/config edits, tiny utilities, simple styling, mechanical renames, obvious
-tests, and known-cause localized fixes. Use the compact contract.
+Use for deterministic low-risk copy/config edits, tiny utilities, simple styling,
+mechanical renames, obvious tests, and known-cause localized fixes.
 
 ### Luna / Medium
 
@@ -162,8 +189,9 @@ agent_type: sol_advisor_terra_implementer
 fork_turns: none
 ~~~
 
-Use for unclear root cause, complicated async/state behavior, performance analysis,
-interacting refactors, moderately complex algorithms, or unfamiliar subsystem work.
+Use for medium-to-hard work with unclear root cause, complicated async/state behavior,
+performance analysis, interacting refactors, moderately complex algorithms, or
+unfamiliar subsystem work.
 
 ### Sol / High implementer
 
@@ -172,89 +200,70 @@ agent_type: sol_advisor_sol_implementer
 fork_turns: none
 ~~~
 
-Reserve for sustained high-end reasoning during implementation: difficult migrations,
-security-critical implementation, hard concurrency/distributed correctness, severe
-performance issues, difficult algorithms, or deeply coupled legacy systems.
+Reserve for genuinely hard-to-complex execution requiring sustained frontier reasoning.
 
-## Token-efficient primary verification
+## Verification ladder
 
-Primary verification is mandatory but proportionate.
+The Terra / Medium primary is the default verifier. It captures a small pre-delegation
+baseline, inspects only worker-owned changed hunks, and runs the narrowest meaningful
+final test/check once. Broader full-project checks run only when policy, blast radius,
+or evidence requires them.
 
-For trivial/low-risk work:
-
-1. Capture `git status --short` before delegation.
-2. After delegation, compare status and inspect only the worker-owned path delta/hunks.
-3. Run the narrowest meaningful final test/check once in the primary.
-4. Run broader typecheck/lint/full tests only when the changed surface, repository policy,
-or evidence makes them relevant.
-5. Do not ingest unrelated pre-existing diffs merely to prove they remain untouched.
-
-For higher-risk work, widen verification with blast radius.
-
-## Review gate
-
-Fresh Sol review is conditional. Set `REVIEW GATE: required` when any material trigger
-applies:
-
-- Sol / High implementation was required;
-- auth/authz/security/privacy/cryptography/payments or another trust boundary changed;
-- destructive persistence/schema/data migration or meaningful data-loss risk exists;
-- concurrency/race correctness, background execution, native iOS/Android lifecycle,
-  permissions, signing/release, or similarly high-impact platform behavior changed;
-- architecture, public API, durable data model, or broad/high-blast-radius refactor
-  changed materially;
-- verification is incomplete/flaky/ambiguous or leaves material residual risk;
-- implementation invalidated important planning assumptions;
-- the user explicitly requests independent review;
-- the primary remains materially uncertain.
-
-Otherwise:
+### Terra / High verification
 
 ~~~text
-REVIEW GATE: skipped-low-risk
+agent_type: sol_advisor_terra_high_consultant
+fork_turns: none
+MODE: verification
 ~~~
 
-## Fresh Sol / High reviewer
+Use for subtle logic, wider refactors, harder edge cases, performance-sensitive changes,
+or other verification that needs more reasoning but not a stronger model.
 
-When required:
+### Sol / Low verification
+
+~~~text
+agent_type: sol_advisor_sol_low_consultant
+fork_turns: none
+MODE: verification
+~~~
+
+Use when Terra is insufficient to judge a bounded consequential change reliably. This is
+the first stronger-model verification tier.
+
+### Sol / Medium verification
+
+~~~text
+agent_type: sol_advisor_sol_medium_consultant
+fork_turns: none
+MODE: verification
+~~~
+
+Use for higher-impact architecture/API/data-model changes, difficult concurrency/native
+lifecycle behavior, security-sensitive changes, Sol-implemented work, or unresolved
+material uncertainty after Sol / Low.
+
+### Sol / High final review
 
 ~~~text
 agent_type: sol_advisor_sol_reviewer
 fork_turns: none
 ~~~
 
-Send only the goal, owned-file change set or base/head revisions, material constraints,
-and concise primary verification evidence. Do not send unrelated repository history.
+Use only for exceptional residual uncertainty or very high-impact risk: severe
+security/data-loss/signing/release concerns, incomplete/conflicting evidence, extremely
+complex implementation, or explicit strongest-review request.
 
-~~~text
-ROLE
-Read-only final review. Do not edit files.
+Send only the goal, relevant owned-file change set or base/head reference, material
+constraints, and concise verification evidence. The reviewer never edits files.
 
-GOAL
-<requested outcome>
+## Isolation
 
-CHANGE SET
-<owned files and relevant diff/base-head reference>
-
-CONSTRAINTS
-- <material compatibility/safety constraints>
-
-VERIFICATION
-- <concise primary evidence>
-
-RETURN
-VERDICT: ship | fix-first | rethink
-REASON: <decisive short reason>
-FINDINGS: <precise issues or none>
-RESIDUAL RISK: <material residual risk or none>
-~~~
-
-Observe actual sandbox policy rather than assuming requested read-only isolation. If the
-host broadens permissions, verify repository state did not change before accepting the
-verdict. Any post-review fix invalidates the verdict when the review gate still applies.
+Consultants and reviewer request read-only sandboxing. Observe actual host policy. If the
+host broadens permissions, verify repository state did not change before accepting a
+verdict. Do not claim requested isolation was enforced when it was not.
 
 ## Optional visible Luna app task
 
-When explicitly requested, follow [luna-task-lane.md](luna-task-lane.md). The Sol /
-Medium primary uses the same high-planning gate, targeted verification, and risk-based
-review gate.
+When explicitly requested, follow [luna-task-lane.md](luna-task-lane.md). The Terra /
+Medium primary uses the same graduated planning and verification ladders.
