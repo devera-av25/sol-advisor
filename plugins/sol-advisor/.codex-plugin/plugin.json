@@ -1,25 +1,25 @@
 {
   "name": "sol-advisor",
-  "version": "0.5.0",
-  "description": "Sol-led capability router: delegate easy-medium execution to Luna / Max, medium-hard to Terra / High, hard-complex to a separate Sol / High implementer, then require a fresh Sol / High review.",
+  "version": "0.6.0",
+  "description": "Efficiency-first Sol-led capability router: prefer Luna / Low or Medium, use Terra / Medium for harder work, reserve Sol / High for complex implementation, verify every diff, and review independently only when risk warrants it.",
   "author": {"name": "Daniel McAteer", "url": "https://github.com/DannyMac180"},
   "homepage": "https://github.com/devera-av25/sol-advisor#readme",
   "repository": "https://github.com/devera-av25/sol-advisor",
   "license": "MIT",
-  "keywords": ["codex", "orchestration", "multi-agent", "gpt-5.6", "routing"],
+  "keywords": ["codex", "orchestration", "multi-agent", "gpt-5.6", "routing", "efficiency"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Sol Advisor",
-    "shortDescription": "Plan with Sol, route execution across Luna, Terra, or Sol, then obtain a fresh Sol review.",
-    "longDescription": "Sol Advisor keeps GPT-5.6 Sol / High as the primary architect and router, prefers a native GPT-5.6 Luna / Max worker for bounded easy-to-medium implementation, escalates medium-to-hard work to GPT-5.6 Terra / High, uses a separate GPT-5.6 Sol / High implementation context for hard-to-complex execution, verifies the actual diff in the parent, and requires a fresh GPT-5.6 Sol / High final reviewer before completion.",
+    "shortDescription": "Plan with Sol, minimize worker model/effort, verify every diff, and review by risk.",
+    "longDescription": "Sol Advisor keeps GPT-5.6 Sol / High as the primary architect and verifier, uses GPT-5.6 Luna / Low for trivial work, Luna / Medium for normal easy-to-medium implementation, Terra / Medium for harder execution, and a separate Sol / High implementer only for hard-to-complex work. Fresh Sol / High review is conditional on material risk or uncertainty instead of mandatory for every change.",
     "developerName": "Daniel McAteer",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "websiteURL": "https://github.com/devera-av25/sol-advisor",
     "defaultPrompt": [
-      "Use Sol Advisor to plan with Sol / High and route implementation through the lowest capable native lane.",
-      "Prefer Luna for bounded work; escalate to Terra or a separate Sol implementer only when execution requires it.",
-      "Verify the actual diff and obtain a fresh Sol / High reviewer verdict before reporting completion."
+      "Use Sol Advisor to plan with Sol / High and route work through the lowest capable model and reasoning-effort lane.",
+      "Prefer Luna / Low or Medium, use Terra / Medium for harder work, and reserve Sol / High for genuinely complex execution.",
+      "Verify every diff in the primary and use a fresh Sol reviewer only when material risk or uncertainty warrants it."
     ]
   }
 }
