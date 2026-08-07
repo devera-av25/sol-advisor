@@ -22,6 +22,124 @@ The primary session should stay on **GPT-5.6 Sol / High**. Even when implementat
 escalates to Sol, it runs in a separate native agent context so planner, implementer,
 and final reviewer remain distinct.
 
+## Recommended first-run setup in Codex Desktop
+
+The preferred setup is intentionally short: give Codex this repository and branch and
+let it run the checked-in bootstrap script.
+
+Repository:
+
+~~~text
+https://github.com/devera-av25/sol-advisor
+~~~
+
+Development branch before PR #1 is merged:
+
+~~~text
+agent/luna-terra-sol-routing
+~~~
+
+A suitable one-time Codex instruction is:
+
+~~~text
+Set up my Sol Advisor fork for Codex Desktop.
+
+Repository: https://github.com/devera-av25/sol-advisor
+Branch: agent/luna-terra-sol-routing
+
+Clone or update a local checkout, switch to exactly that branch, then run:
+
+sh scripts/bootstrap-codex.sh --expected-branch agent/luna-terra-sol-routing
+
+Do not modify or merge the repository. Do not manually overwrite conflicting custom
+agent files. If the bootstrap reports a missing prerequisite or conflict, stop and show
+me the exact error. If it reports BOOTSTRAP PASSED, tell me to fully restart Codex
+Desktop and start a new task using GPT-5.6 Sol with High reasoning. Do not test the
+newly installed native agents from this setup task.
+~~~
+
+The bootstrap script performs the deterministic setup work:
+
+1. Checks that `git`, `codex`, and `jq` are available.
+2. Confirms the checkout and optional expected branch.
+3. Registers the local checkout as a Codex marketplace.
+4. Installs `sol-advisor@sol-advisor`.
+5. Confirms the installed plugin matches this checkout rather than a stale/upstream copy.
+6. Runs the shipped conflict-safe native-agent installer.
+7. Runs the installer's byte-exact `--check` validation.
+8. Verifies all four role names and their exact model/reasoning pins.
+9. Prints `BOOTSTRAP PASSED` and the required restart/new-task boundary.
+
+It intentionally does **not** change the parent task's model and does **not** spawn the
+newly installed roles in the bootstrap task. Native agent discovery must be validated
+from a fresh task after restart.
+
+## Manual setup fallback
+
+If you prefer to run the setup yourself, clone the development branch:
+
+~~~sh
+mkdir -p ~/Developer
+cd ~/Developer
+git clone --branch agent/luna-terra-sol-routing --single-branch \
+  https://github.com/devera-av25/sol-advisor.git \
+  sol-advisor-router-test
+cd sol-advisor-router-test
+~~~
+
+Then run the same canonical bootstrap:
+
+~~~sh
+sh scripts/bootstrap-codex.sh --expected-branch agent/luna-terra-sol-routing
+~~~
+
+If a prerequisite is missing, install it using the normal package manager for your
+machine and rerun. The bootstrap deliberately does not silently install package
+managers or overwrite unknown custom-agent files.
+
+## What gets installed
+
+The native companion installer manages exactly these role profiles:
+
+~~~text
+sol-advisor-luna-implementer.toml
+sol-advisor-terra-implementer.toml
+sol-advisor-sol-implementer.toml
+sol-advisor-sol-reviewer.toml
+~~~
+
+Expected runtime pins:
+
+~~~text
+sol_advisor_luna_implementer  -> gpt-5.6-luna / max
+sol_advisor_terra_implementer -> gpt-5.6-terra / high
+sol_advisor_sol_implementer   -> gpt-5.6-sol / high
+sol_advisor_sol_reviewer      -> gpt-5.6-sol / high / requested read-only
+~~~
+
+The installer refuses to overwrite unrecognized or modified files. It may migrate only
+exact older Sol Advisor templates that the script can identify safely.
+
+## After bootstrap
+
+When the bootstrap prints `BOOTSTRAP PASSED`:
+
+1. Fully quit/restart Codex Desktop.
+2. Start a **new** Codex task for the project you actually want to work on.
+3. Select **GPT-5.6 Sol** with **High** reasoning for the primary task.
+4. Invoke the orchestration skill normally.
+
+For example:
+
+~~~text
+Use $sol-advisor:orchestration to implement this feature. Plan with Sol / High, prefer
+Luna for bounded implementation, escalate to Terra or Sol only when needed, verify the
+actual diff, and obtain the fresh Sol review before reporting done.
+~~~
+
+The skill cannot switch the primary model itself. If the primary is not Sol / High, it
+must stop before delegation rather than claim the prerequisite is satisfied.
+
 ## Routing philosophy
 
 The router prefers the lowest capable lane rather than reserving Luna only for trivial
@@ -38,86 +156,14 @@ Lower lanes may return an evidence-backed escalation request. The primary update
 specification with what was discovered and escalates rather than repeating the same
 unchanged attempt.
 
-## Requirements
+## Runtime verification
 
-- A current Codex environment with plugins, native subagents, and custom agents enabled.
-- Access to GPT-5.6 Sol / High, GPT-5.6 Terra / High, and GPT-5.6 Luna / Max.
-- `jq` for the companion-install lookup shown below.
+Before native delegation, the skill requires the installer check to pass and all four
+agent types to be available. Native spawn/details metadata is the primary routing
+evidence. When the host exposes model and effort, they must match the role pins above.
 
-The native router is the preferred setup for portability across Codex surfaces that
-support plugins/custom agents. The existing user-visible Luna app-task workflow remains
-available when explicitly requested, but it is no longer the only way to use Luna.
-
-## Install this fork from GitHub
-
-Add this repository as a marketplace and install the plugin:
-
-~~~sh
-codex plugin marketplace add devera-av25/sol-advisor --ref main
-codex plugin add sol-advisor@sol-advisor
-~~~
-
-For development of the routing branch before merge, point the marketplace at a local
-checkout or the desired branch/ref instead of `main`.
-
-## Install the four native companion agents
-
-Plugin installation does not automatically write user-owned custom-agent files. Install
-the shipped templates separately:
-
-~~~sh
-plugin_dir="$(codex plugin list --json | jq -r '.installed[] | select(.pluginId == "sol-advisor@sol-advisor") | .source.path')"
-test -n "$plugin_dir"
-test -d "$plugin_dir"
-sh "$plugin_dir/scripts/install-agents.sh"
-sh "$plugin_dir/scripts/install-agents.sh" --check
-~~~
-
-The installer manages these exact files:
-
-~~~text
-sol-advisor-luna-implementer.toml
-sol-advisor-terra-implementer.toml
-sol-advisor-sol-implementer.toml
-sol-advisor-sol-reviewer.toml
-~~~
-
-It refuses to overwrite unrecognized or modified files. It recognizes the exact older
-Sol Advisor Luna and Terra templates that this fork supersedes and may migrate only
-those byte-identifiable versions.
-
-Start a **new Codex task** after installing or updating native agent profiles so the
-host discovers the current types.
-
-## Use
-
-Select **GPT-5.6 Sol / High** for the primary task and ask for implementation work
-normally, or invoke the orchestration skill explicitly:
-
-~~~text
-Use $sol-advisor:orchestration to build this feature. Plan with Sol / High, prefer Luna
-for bounded implementation, escalate to Terra or Sol only when needed, verify the
-actual diff, and obtain the fresh Sol review before reporting done.
-~~~
-
-The skill cannot switch the primary model itself. If the primary is not Sol / High, it
-must stop before delegation rather than pretend the prerequisite is satisfied.
-
-## Native runtime verification
-
-Before native delegation the skill requires the installer check to pass and all four
-agent types to be available. Spawn/details metadata is the primary routing evidence.
-When the host exposes model and effort, they must match the role pins:
-
-~~~text
-sol_advisor_luna_implementer  -> gpt-5.6-luna / max
-sol_advisor_terra_implementer -> gpt-5.6-terra / high
-sol_advisor_sol_implementer   -> gpt-5.6-sol / high
-sol_advisor_sol_reviewer      -> gpt-5.6-sol / high
-~~~
-
-If Desktop omits model or effort and local rollout metadata is accessible, the existing
-read-only runtime inspector can be used:
+If Desktop omits model or effort and local rollout metadata is accessible, use the
+read-only runtime inspector:
 
 ~~~sh
 plugin_dir="$(codex plugin list --json | jq -r '.installed[] | select(.pluginId == "sol-advisor@sol-advisor") | .source.path')"
@@ -149,17 +195,20 @@ The original user-visible Luna app-task workflow remains in
 when the user explicitly requests a separate Codex app task. The native Luna worker is
 the normal easy-to-medium lane for this fork.
 
-## Local development
+## Local development without the bootstrap
 
-Install a checkout as a local marketplace:
+The underlying manual commands remain available for debugging:
 
 ~~~sh
 cd /absolute/path/to/sol-advisor
 codex plugin marketplace add /absolute/path/to/sol-advisor
 codex plugin add sol-advisor@sol-advisor
+plugin_dir="$(codex plugin list --json | jq -r '.installed[] | select(.pluginId == "sol-advisor@sol-advisor") | .source.path')"
+sh "$plugin_dir/scripts/install-agents.sh"
+sh "$plugin_dir/scripts/install-agents.sh" --check
 ~~~
 
-Then install/check the companion roles and start a fresh Codex task.
+Start a new Codex task after any successful native-agent install or update.
 
 ## Attribution
 
