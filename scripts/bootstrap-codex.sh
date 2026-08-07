@@ -8,9 +8,9 @@ usage() {
 Usage: sh scripts/bootstrap-codex.sh [--expected-branch BRANCH]
 
 Registers this checkout as a local Codex marketplace, installs sol-advisor@sol-advisor,
-installs the four native custom-agent profiles, and validates the exact model/reasoning
-pins. It does not change the primary Codex model and it does not spawn/test the newly
-installed agents in the current task.
+installs the five native custom-agent profiles, and validates exact model/reasoning
+pins. It does not change the primary Codex model and does not spawn/test newly installed
+agents in the current task.
 
 Options:
   --expected-branch BRANCH  Fail unless this checkout is currently on BRANCH.
@@ -55,6 +55,7 @@ require_command codex
 require_command jq
 require_command cmp
 require_command grep
+require_command shasum
 
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd) || exit 1
 repo_root=$(CDPATH= cd "$script_dir/.." && pwd) || exit 1
@@ -64,6 +65,7 @@ git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
   fail "this script must run from a Git checkout: $repo_root"
 [ -f "$plugin_root/.codex-plugin/plugin.json" ] || fail "plugin manifest is missing from this checkout."
 [ -f "$plugin_root/scripts/install-agents.sh" ] || fail "agent installer is missing from this checkout."
+sh -n "$plugin_root/scripts/install-agents.sh" || fail "agent installer has invalid shell syntax."
 
 current_branch=$(git -C "$repo_root" branch --show-current)
 [ -n "$current_branch" ] || fail "could not determine the current Git branch (detached HEAD is not supported for bootstrap)."
@@ -79,8 +81,8 @@ if ! git -C "$repo_root" diff --quiet -- || ! git -C "$repo_root" diff --cached 
   printf '%s\n' "WARNING: checkout has local changes. Bootstrap will not modify repository files." >&2
 fi
 
-# These files distinguish the capability-router fork from the upstream Terra-default setup.
 for required in \
+  "$plugin_root/agents/sol-advisor-luna-low-implementer.toml" \
   "$plugin_root/agents/sol-advisor-luna-implementer.toml" \
   "$plugin_root/agents/sol-advisor-terra-implementer.toml" \
   "$plugin_root/agents/sol-advisor-sol-implementer.toml" \
@@ -116,9 +118,9 @@ plugin_dir=$(printf '%s\n' "$plugin_json" | jq -r '.installed[] | select(.plugin
 [ -d "$plugin_dir" ] || fail "installed plugin path does not exist: $plugin_dir"
 note "Installed plugin path: $plugin_dir"
 
-# Ensure Codex installed this checkout's router rather than a stale/upstream Sol Advisor copy.
 for relative in \
   .codex-plugin/plugin.json \
+  agents/sol-advisor-luna-low-implementer.toml \
   agents/sol-advisor-luna-implementer.toml \
   agents/sol-advisor-terra-implementer.toml \
   agents/sol-advisor-sol-implementer.toml \
@@ -132,8 +134,9 @@ do
 done
 
 jq empty "$plugin_dir/.codex-plugin/plugin.json" || fail "installed plugin manifest is invalid JSON."
+sh -n "$plugin_dir/scripts/install-agents.sh" || fail "installed agent installer has invalid shell syntax."
 
-note "Installing four native custom-agent profiles"
+note "Installing five native custom-agent profiles"
 sh "$plugin_dir/scripts/install-agents.sh"
 
 note "Running exact companion-profile check"
@@ -154,18 +157,23 @@ check_line() {
   grep -Fqx "$expected" "$file" || fail "expected line not found in $file: $expected"
 }
 
+luna_low=$agents_dir/sol-advisor-luna-low-implementer.toml
 luna=$agents_dir/sol-advisor-luna-implementer.toml
 terra=$agents_dir/sol-advisor-terra-implementer.toml
 sol_impl=$agents_dir/sol-advisor-sol-implementer.toml
 sol_review=$agents_dir/sol-advisor-sol-reviewer.toml
 
+check_line "$luna_low" 'name = "sol_advisor_luna_low_implementer"'
+check_line "$luna_low" 'model = "gpt-5.6-luna"'
+check_line "$luna_low" 'model_reasoning_effort = "low"'
+
 check_line "$luna" 'name = "sol_advisor_luna_implementer"'
 check_line "$luna" 'model = "gpt-5.6-luna"'
-check_line "$luna" 'model_reasoning_effort = "max"'
+check_line "$luna" 'model_reasoning_effort = "medium"'
 
 check_line "$terra" 'name = "sol_advisor_terra_implementer"'
 check_line "$terra" 'model = "gpt-5.6-terra"'
-check_line "$terra" 'model_reasoning_effort = "high"'
+check_line "$terra" 'model_reasoning_effort = "medium"'
 
 check_line "$sol_impl" 'name = "sol_advisor_sol_implementer"'
 check_line "$sol_impl" 'model = "gpt-5.6-sol"'
@@ -182,9 +190,10 @@ printf '%s\n' "Branch: $current_branch"
 printf '%s\n' "Plugin: $plugin_dir"
 printf '%s\n' "Agents: $agents_dir"
 printf '%s\n' 'Validated routing pins:'
-printf '%s\n' '  Luna implementer  -> gpt-5.6-luna / max'
-printf '%s\n' '  Terra implementer -> gpt-5.6-terra / high'
-printf '%s\n' '  Sol implementer   -> gpt-5.6-sol / high'
-printf '%s\n' '  Sol reviewer      -> gpt-5.6-sol / high / requested read-only'
+printf '%s\n' '  Luna low         -> gpt-5.6-luna / low'
+printf '%s\n' '  Luna medium      -> gpt-5.6-luna / medium'
+printf '%s\n' '  Terra medium     -> gpt-5.6-terra / medium'
+printf '%s\n' '  Sol implementer  -> gpt-5.6-sol / high'
+printf '%s\n' '  Sol reviewer     -> gpt-5.6-sol / high / requested read-only'
 printf '\n%s\n' 'NEXT STEP: fully quit/restart Codex Desktop, then start a NEW task with GPT-5.6 Sol / High.'
 printf '%s\n' 'Do not test the newly installed native roles in the bootstrap task; discovery happens in a fresh task.'
