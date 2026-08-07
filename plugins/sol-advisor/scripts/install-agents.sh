@@ -7,10 +7,11 @@ usage() {
   cat <<'EOF'
 Usage: install-agents.sh [--target-dir PATH] [--check]
 
-Install Sol Advisor's five native custom-agent templates into the target directory:
-Luna / Low, Luna / Medium, Terra / Medium, Sol / High implementation, and Sol / High
-review. The installer never overwrites an unrecognized or modified file. It can safely
-migrate only exact recognized older Sol Advisor Luna and Terra templates.
+Install Sol Advisor's six native custom-agent templates into the target directory:
+Luna / Low, Luna / Medium, Terra / Medium, on-demand Sol / High planning,
+Sol / High implementation, and Sol / High review. The installer never overwrites an
+unrecognized or modified file. It can safely migrate only exact recognized older Sol
+Advisor Luna and Terra templates.
 
 Without --target-dir, the target is "$CODEX_HOME/agents" when CODEX_HOME is set,
 otherwise "$HOME/.codex/agents".
@@ -54,6 +55,7 @@ esac
 luna_low_file=sol-advisor-luna-low-implementer.toml
 luna_file=sol-advisor-luna-implementer.toml
 terra_file=sol-advisor-terra-implementer.toml
+sol_planner_file=sol-advisor-sol-planner.toml
 sol_impl_file=sol-advisor-sol-implementer.toml
 sol_review_file=sol-advisor-sol-reviewer.toml
 
@@ -127,6 +129,7 @@ for template in \
   "$template_dir/$luna_low_file" \
   "$template_dir/$luna_file" \
   "$template_dir/$terra_file" \
+  "$template_dir/$sol_planner_file" \
   "$template_dir/$sol_impl_file" \
   "$template_dir/$sol_review_file"
 do
@@ -142,11 +145,12 @@ fi
 install_one "Luna low" "$template_dir/$luna_low_file" "$target_dir/$luna_low_file"
 install_one "Luna medium" "$template_dir/$luna_file" "$target_dir/$luna_file" "$legacy_luna_sha256s"
 install_one "Terra medium" "$template_dir/$terra_file" "$target_dir/$terra_file" "$legacy_terra_sha256s"
+install_one "Sol planner" "$template_dir/$sol_planner_file" "$target_dir/$sol_planner_file"
 install_one "Sol implementer" "$template_dir/$sol_impl_file" "$target_dir/$sol_impl_file"
 install_one "Sol reviewer" "$template_dir/$sol_review_file" "$target_dir/$sol_review_file"
 
 if [ "$check_only" -eq 1 ]; then
-  printf '%s\n' "CHECK PASSED: all five Sol Advisor native roles match exactly."
+  printf '%s\n' "CHECK PASSED: all six Sol Advisor native roles match exactly."
 else
-  printf '%s\n' "INSTALL PASSED: all five Sol Advisor native roles are current."
+  printf '%s\n' "INSTALL PASSED: all six Sol Advisor native roles are current."
 fi
