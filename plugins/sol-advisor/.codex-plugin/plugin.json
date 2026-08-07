@@ -1,7 +1,7 @@
 {
   "name": "sol-advisor",
-  "version": "0.6.0",
-  "description": "Efficiency-first Sol-led capability router: prefer Luna / Low or Medium, use Terra / Medium for harder work, reserve Sol / High for complex implementation, verify every diff, and review independently only when risk warrants it.",
+  "version": "0.7.0",
+  "description": "Token-efficient capability router: Terra / Medium controls by default, planning escalates Terra High then Sol Low/Medium, implementation stays cheap-first, and verification scales from Terra to Sol only when complexity or risk warrants it.",
   "author": {"name": "Daniel McAteer", "url": "https://github.com/DannyMac180"},
   "homepage": "https://github.com/devera-av25/sol-advisor#readme",
   "repository": "https://github.com/devera-av25/sol-advisor",
@@ -10,16 +10,16 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Sol Advisor",
-    "shortDescription": "Plan with Sol, minimize worker model/effort, verify every diff, and review by risk.",
-    "longDescription": "Sol Advisor keeps GPT-5.6 Sol / High as the primary architect and verifier, uses GPT-5.6 Luna / Low for trivial work, Luna / Medium for normal easy-to-medium implementation, Terra / Medium for harder execution, and a separate Sol / High implementer only for hard-to-complex work. Fresh Sol / High review is conditional on material risk or uncertainty instead of mandatory for every change.",
+    "shortDescription": "Default to Terra, delegate cheaply, and escalate planning or verification only when needed.",
+    "longDescription": "Sol Advisor uses GPT-5.6 Terra / Medium as the normal primary controller. Planning escalates through Terra / High, Sol / Low, and Sol / Medium only when justified. Implementation prefers Luna / Low or Medium, then Terra / Medium, reserving Sol / High for genuinely hard execution. Verification starts in Terra and scales through Sol / Low, Medium, or High according to complexity, risk, and residual uncertainty.",
     "developerName": "Daniel McAteer",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "websiteURL": "https://github.com/devera-av25/sol-advisor",
     "defaultPrompt": [
-      "Use Sol Advisor to plan with Sol / High and route work through the lowest capable model and reasoning-effort lane.",
-      "Prefer Luna / Low or Medium, use Terra / Medium for harder work, and reserve Sol / High for genuinely complex execution.",
-      "Verify every diff in the primary and use a fresh Sol reviewer only when material risk or uncertainty warrants it."
+      "Use Sol Advisor with Terra / Medium as the default controller and route work through the lowest capable lane.",
+      "Plan upward only as needed: Terra High, then Sol Low, then Sol Medium; do not use Sol High for planning.",
+      "Verify with Terra first, then Sol Low/Medium/High only when complexity or risk justifies the upgrade."
     ]
   }
 }
