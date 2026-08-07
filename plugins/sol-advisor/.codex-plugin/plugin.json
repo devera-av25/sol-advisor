@@ -1,21 +1,25 @@
 {
   "name": "sol-advisor",
-  "version": "0.4.0",
-  "description": "Codex-native architect workflow with a native Terra / High lane plus an explicit opt-in, user-visible Luna task lane, with primary-session verification and acceptance.",
+  "version": "0.5.0",
+  "description": "Sol-led capability router: plan with GPT-5.6 Sol / High, delegate easy-medium implementation to Luna / Max, medium-hard to Terra / High, hard-complex to a separate Sol / High worker, then require a fresh Sol review.",
   "author": {"name": "Daniel McAteer", "url": "https://github.com/DannyMac180"},
-  "homepage": "https://github.com/DannyMac180/sol-advisor#readme",
-  "repository": "https://github.com/DannyMac180/sol-advisor",
+  "homepage": "https://github.com/devera-av25/sol-advisor#readme",
+  "repository": "https://github.com/devera-av25/sol-advisor",
   "license": "MIT",
-  "keywords": ["codex", "orchestration", "multi-agent", "gpt-5.6"],
+  "keywords": ["codex", "orchestration", "multi-agent", "gpt-5.6", "routing"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Sol Advisor",
-    "shortDescription": "Orchestrate with Sol, use native Terra / High or opt-in Luna tasks, and verify the accepted diff.",
-    "longDescription": "Sol Advisor gives Codex two explicit delivery modes: GPT-5.6 Sol keeps architecture, decomposition, verification, and acceptance in the primary session; the native mode uses a separately installed GPT-5.6 Terra / High role and a fresh Sol reviewer, while the opt-in Luna mode creates user-visible GPT-5.6 Luna / Max tasks through list_projects, list_threads, create_thread, wait_threads, read_thread, and send_message_to_thread and keeps review, corrections, PR authorization, and dependent-stack ordering in the primary session.",
+    "shortDescription": "Plan with Sol; route execution through Luna, Terra, or Sol; finish with fresh Sol review.",
+    "longDescription": "GPT-5.6 Sol / High owns planning and routing. Native implementation defaults to GPT-5.6 Luna / Max for easy-to-medium work, escalates to GPT-5.6 Terra / High for medium-to-hard work, and uses a separate GPT-5.6 Sol / High implementation context for hard-to-complex work. The primary verifies the actual diff and a fresh requested-read-only Sol / High reviewer must approve completion.",
     "developerName": "Daniel McAteer",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
-    "websiteURL": "https://github.com/DannyMac180/sol-advisor",
-    "defaultPrompt": ["Use Sol Advisor's native lane to build this feature, verify it, and obtain the fresh Sol review before completion.", "Use the Luna task lane only when I explicitly authorize it; keep primary review and acceptance in this task."]
+    "websiteURL": "https://github.com/devera-av25/sol-advisor",
+    "defaultPrompt": [
+      "Use Sol Advisor to plan with Sol / High and route this implementation through the lowest capable lane.",
+      "Prefer Luna for bounded work, escalate to Terra or Sol only when implementation complexity requires it.",
+      "Verify the diff and obtain a fresh Sol / High review before reporting completion."
+    ]
   }
 }
