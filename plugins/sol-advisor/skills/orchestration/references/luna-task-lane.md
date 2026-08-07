@@ -1,11 +1,11 @@
 # Luna app-task lane contract
 
 This contract covers the optional, explicit **user-visible Codex app-task** version of
-Luna execution. It is separate from this fork's normal native Luna custom-agent lane.
+Luna execution. It is separate from this fork's normal native Luna custom-agent lanes.
 Use it only when the user specifically asks for a separate Codex app task/worktree.
 
 The primary GPT-5.6 Sol / High task remains architect, router, verification owner, PR
-authority, and acceptor.
+authority, review-gate owner, and acceptor.
 
 ## Authorization and capability gate
 
@@ -13,13 +13,14 @@ authority, and acceptor.
   explicitly request the user-visible Luna task lane in the current request.
 - Confirm the app exposes `list_projects`, `list_threads`, `create_thread`,
   `wait_threads`, `read_thread`, and `send_message_to_thread`.
-- Confirm the host accepts `gpt-5.6-luna` with `max` thinking.
-- If a required capability is unavailable, stop this optional lane rather than
-  silently substituting another model or effort. The primary may separately choose the
-  normal native router only when that is consistent with the user's request.
+- Prefer `gpt-5.6-luna` with `medium` thinking for normal app-task execution. Use higher
+  effort only when the user explicitly requests it or evidence shows medium is
+  insufficient and the host supports the higher setting.
+- If a required capability is unavailable, stop this optional lane rather than silently
+  substituting another model or effort.
 
-The existence of `sol_advisor_luna_implementer` does not mean this app-task lane uses
-`spawn_agent`. Native Luna and app-task Luna are two different execution mechanisms.
+The existence of native Luna roles does not mean this app-task lane uses `spawn_agent`.
+Native Luna and app-task Luna are different execution mechanisms.
 
 ## Tool sequence
 
@@ -27,27 +28,27 @@ The existence of `sol_advisor_luna_implementer` does not mean this app-task lane
    `isGitRepository` before task creation.
 2. Build the complete task packet below; the child does not inherit the parent's full
    conversation.
-3. Call `create_thread` with `model = gpt-5.6-luna` and `thinking = max`. For a Git
-   project, prefer the app's isolated worktree behavior unless the user requested a
+3. Call `create_thread` with `model = gpt-5.6-luna` and `thinking = medium` by default.
+   For a Git project, prefer isolated worktree behavior unless the user requested a
    different supported starting state.
 4. If creation returns only a `clientThreadId`, treat it only as a setup handle. Call
    `list_threads` without passing that client ID and correlate the new task using
-   trustworthy identity, project, time, path, and state metadata. Do not pass a pending
-   client ID to thread-id-only tools.
+   trustworthy identity, project, time, path, and state metadata.
 5. Monitor a ready task with `wait_threads`, then read its handoff with `read_thread`.
 6. Independently inspect the actual worktree, branch, diff, base, commits, and checks.
    A child report is evidence to inspect, not acceptance.
 7. Send corrections to the same real task with `send_message_to_thread`, then wait,
    read, and inspect again.
 8. Authorize PR creation explicitly only after the primary accepts the diff and checks.
+9. Apply the same risk-based Sol review gate used by the native router.
 
 ## Complete task packet
 
 ~~~text
 ROLE
-Act as the implementation worker in Sol Advisor's explicit user-visible Luna / Max app
-task lane. Execute the settled plan. Do not redesign architecture, broaden ownership,
-or create/push a PR without primary authorization.
+Act as the implementation worker in Sol Advisor's explicit user-visible Luna app-task
+lane. Execute the settled plan proportionally. Do not redesign architecture, broaden
+ownership, or create/push a PR without primary authorization.
 
 OBJECTIVE
 <Observable outcome, why it matters, and acceptance condition.>
@@ -62,7 +63,7 @@ INTERFACES
 
 CONSTRAINTS
 - <repository conventions, safety boundaries, settled decisions, excluded scope>
-- This task is GPT-5.6 Luna / Max through Codex app-task tools.
+- Default task route is GPT-5.6 Luna / Medium through Codex app-task tools.
 
 STARTING STATE / BASE
 - Project ID: <projectId>
@@ -115,5 +116,5 @@ The primary may accept an app-task result only after it has:
 - resolved corrections through the same task when needed;
 - recorded observed task-routing evidence without inventing unavailable metadata;
 - authorized any PR action explicitly; and
-- obtained the same fresh native `sol_advisor_sol_reviewer` verdict required by the
-  normal router before reporting completion.
+- applied the native router's review gate, spawning a fresh
+  `sol_advisor_sol_reviewer` only when material risk/uncertainty triggers require it.
