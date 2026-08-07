@@ -1,227 +1,216 @@
 ---
 name: orchestration
-description: "Efficiency-first Sol-led router: plan with GPT-5.6 Sol / High, prefer Luna / Low or Medium, use Terra / Medium for harder work, reserve Sol / High for genuinely hard-complex implementation, verify every diff, and use fresh Sol review only when risk or uncertainty warrants it."
+description: "Token-efficient Sol-led router: use GPT-5.6 Sol / Medium as the normal controller, Luna / Low or Medium for routine execution, Terra / Medium for harder work, on-demand Sol / High planning or implementation only when justified, targeted parent verification, and independent Sol review only when risk warrants it."
 ---
 
 # Sol Advisor Orchestration
 
-Act as architect and capability router. Own the user's intent, architecture,
-decomposition, lane selection, parent verification, escalation decisions, review-gate
-decision, and final acceptance. Keep the primary session on GPT-5.6 Sol / High unless
-the user explicitly chooses another primary configuration.
+Act as controller, router, verifier, and acceptor. Optimize for the **lowest model tier,
+reasoning effort, and context footprint that can reliably complete the task**.
 
-Optimize both **model tier and reasoning effort**. Prefer the cheapest and lowest-effort
-lane that can reliably complete the work. Do not spend Max/High reasoning merely because
-it is available.
+The normal primary session is GPT-5.6 Sol / Medium. Do not pay for Sol / High merely to
+classify or verify routine work. When consequential planning genuinely requires more
+reasoning, spawn the separate read-only `sol_advisor_sol_planner` at Sol / High and then
+return execution control to the Sol / Medium primary.
 
 Read [references/role-contracts.md](references/role-contracts.md) before the first native
-delegation in a primary task. The separate
+delegation in a fresh primary task. The separate
 [references/luna-task-lane.md](references/luna-task-lane.md) is optional and only for an
-explicitly requested user-visible Codex app task.
+explicitly requested visible Codex app task.
 
-## Confirm the primary session
+## Primary session
 
-The supported default primary is `gpt-5.6-sol` with high reasoning. Verify the model and
-effort when runtime metadata exposes them. If the primary differs, do not pretend the
-skill changed it. Tell the user what was observed and either continue only when their
-request explicitly accepts it or stop for correction.
-
-The primary should reason proportionally. Small settled tasks need a concise routing
-decision and compact specification, not broad architecture discovery.
-
-## Native routing policy
-
-Use the lowest capable lane:
-
-1. **Luna / Low — trivial fast path.** Use for deterministic, low-risk work with explicit
-   scope and acceptance criteria: tiny utilities, copy/config changes, straightforward
-   styling, mechanical renames, obvious tests, and localized known-cause fixes.
-2. **Luna / Medium — default easy-to-medium lane.** Use for normal bounded feature work
-   whose architecture is settled: UI components/screens from a clear design, forms,
-   validation, CRUD, API wiring, hooks, tests, and medium-sized predictable multi-file
-   implementation.
-3. **Terra / Medium — medium-to-hard lane.** Use when implementation itself requires
-   substantial judgment: unclear root cause, complicated async/state behavior,
-   performance work, wider interacting refactors, moderately complex algorithms, or
-   unfamiliar subsystem integration.
-4. **Sol / High implementer — hard-to-complex lane.** Reserve for sustained frontier-level
-   reasoning where architecture and implementation repeatedly inform each other:
-   difficult migrations, security-critical implementation, hard concurrency/distributed
-   correctness, severe performance pathologies, difficult algorithms, or deeply coupled
-   legacy systems.
-
-Do not route by file count alone. A large mechanical edit may still be Luna / Low. A
-small security or concurrency bug may require Sol / High.
-
-## Escalation is normal
-
-A lower lane should stop early when it is underpowered instead of consuming more tokens
-thrashing.
-
-- Luna / Low may recommend Luna / Medium, Terra, or Sol.
-- Luna / Medium may recommend Terra or Sol.
-- Terra / Medium may recommend Sol.
-- Sol implementer may return an architectural issue to the primary.
-
-Update the specification with discovered evidence before escalation. Never resend the
-same unchanged task to a struggling worker. Never silently substitute a different role,
-model, or effort.
-
-## Preflight native companion roles
-
-Run native preflight **once before the first native delegation in a fresh primary task**.
-A successful result may be reused for later spawns in that task unless installation,
-configuration, or runtime evidence changes.
-
-1. Resolve `../../scripts/install-agents.sh` relative to this SKILL.md and run:
-
-   ~~~sh
-   skill_dir=<directory-containing-this-SKILL.md>
-   installer="$skill_dir/../../scripts/install-agents.sh"
-   sh "$installer" --check
-   ~~~
-
-2. Confirm the native spawn tool exposes all five exact agent types:
-
-   - `sol_advisor_luna_low_implementer`
-   - `sol_advisor_luna_implementer`
-   - `sol_advisor_terra_implementer`
-   - `sol_advisor_sol_implementer`
-   - `sol_advisor_sol_reviewer`
-
-3. After spawning a role, inspect public spawn/details metadata. When model or effort is
-   exposed, require:
-
-   - Luna low -> `gpt-5.6-luna` / `low`
-   - Luna medium -> `gpt-5.6-luna` / `medium`
-   - Terra medium -> `gpt-5.6-terra` / `medium`
-   - Sol implementer -> `gpt-5.6-sol` / `high`
-   - Sol reviewer -> `gpt-5.6-sol` / `high`
-
-   If model/effort is omitted and local rollout metadata is accessible, use
-   `../../scripts/inspect-agent-runtime.sh <native-subagent-thread-id>` as the read-only
-   fallback. Public and local evidence must agree when both exist.
-
-4. For a reviewer spawn, record the observed sandbox/permission policy. The role requests
-   read-only. Never claim enforced read-only isolation unless the host reports it. If the
-   host broadens permissions, use before/after repository-state verification as described
-   in `references/role-contracts.md`.
-
-A missing, stale, conflicting, unavailable, inconsistent, or unobservable role/model/
-effort stops the affected lane. Agent TOML pins model and effort; do not add per-spawn
-overrides.
-
-## Keep architect work in the primary session
-
-The primary owns requirements, architecture, decomposition, routing, verification,
-escalation interpretation, review-gate decisions, and acceptance. Do not write delegated
-implementation code in the primary merely to avoid spawning the appropriate worker.
-
-Use **proportionate specification depth**:
-
-- Luna / Low gets a compact packet: objective, exact owned files, acceptance criteria,
-  and targeted verification.
-- Luna / Medium, Terra, and Sol get the full implementation contract from
-  `references/role-contracts.md` when the task needs it.
-
-Avoid broad codebase discovery for an explicitly standalone or already-understood tiny
-change.
-
-## Spawn the selected implementation lane
-
-Use `fork_turns: none`:
+Preferred primary:
 
 ~~~text
-Trivial / low risk:
-agent_type: sol_advisor_luna_low_implementer
-
-Easy-medium:
-agent_type: sol_advisor_luna_implementer
-
-Medium-hard:
-agent_type: sol_advisor_terra_implementer
-
-Hard-complex:
-agent_type: sol_advisor_sol_implementer
+model: gpt-5.6-sol
+reasoning: medium
 ~~~
 
-Give each worker one owned file set or bounded responsibility. Independent non-overlap
-may run concurrently; shared-file edits and dependency chains remain serial.
+Sol / High primary is supported when the user deliberately selects it, but it is not the
+efficiency default. If runtime metadata exposes another primary model/effort, report the
+observed configuration and do not pretend the skill changed it.
 
-## Verify every implementation
+The primary should do only the reasoning needed to route, verify, and accept. Avoid
+broad discovery, long planning narratives, repeated summaries, or full-project scans
+when a bounded task does not need them.
 
-Primary verification is mandatory even when a fresh reviewer is skipped:
+## Planning gate: use Sol / High only when it earns the cost
 
-1. Inspect the working tree and complete diff.
-2. Confirm only in-scope files changed.
-3. Run the task's targeted verification/tests.
-4. Compare the actual result with objective, interfaces, and constraints.
-5. Delegate any required fixes; do not silently repair child code in the primary.
+Most trivial and normal bounded tasks **do not need a separate planning agent**. The
+Sol / Medium primary should create a concise implementation packet and delegate.
 
-For tiny tasks, keep verification targeted rather than running expensive unrelated test
-suites unless repository policy requires them.
+Spawn `sol_advisor_sol_planner` only when a material planning trigger applies, such as:
 
-## Risk-based fresh Sol review
-
-A fresh `sol_advisor_sol_reviewer` is **not required for every task**. After primary
-verification, apply a review gate.
-
-### Require fresh Sol / High review when any material trigger applies
-
-- a Sol implementer was required;
-- authentication, authorization, security, privacy, cryptography, payments, or other
-  sensitive trust-boundary behavior changed;
-- data migration, destructive persistence/schema change, or meaningful data-loss risk
-  exists;
-- concurrency/race correctness, background execution, or native iOS/Android lifecycle,
-  permissions, signing/release, or similarly high-impact platform behavior changed;
-- architecture, public API, durable data model, or a broad/high-blast-radius refactor
-  changed materially;
-- verification is incomplete, flaky, ambiguous, or leaves material residual risk;
-- implementation evidence invalidated important planning assumptions;
-- the user explicitly requests independent review;
-- the primary has material uncertainty after verification.
-
-### Skip fresh review for verified low-risk work
-
-If none of the triggers apply and primary verification fully passes, finish without a
-fresh reviewer. Record `REVIEW GATE: skipped-low-risk` and a short reason.
-
-Typical skip candidates include copy/styling changes, utilities, ordinary components,
-forms, validation, tests, CRUD/API wiring, mechanical refactors, and known localized
-bugs with strong targeted verification.
-
-### When review is required
+- a significant architecture or subsystem boundary decision;
+- public API, durable data model, persistence/schema, or migration design;
+- security/auth/privacy/payments or another consequential trust-boundary design;
+- concurrency/distributed/background/native-lifecycle correctness whose design is not
+  already settled;
+- a broad refactor with multiple viable architectures or high blast radius;
+- difficult performance work requiring architectural tradeoffs;
+- requirements are materially ambiguous and the choice affects implementation shape;
+- the primary has material uncertainty about interfaces, decomposition, or risk.
 
 Spawn:
 
 ~~~text
-agent_type: sol_advisor_sol_reviewer
+agent_type: sol_advisor_sol_planner
 fork_turns: none
 ~~~
 
-The reviewer returns `ship`, `fix-first`, or `rethink`. Any post-review change invalidates
-the verdict. The reviewer never implements its own fixes.
+Send only the context needed for the planning decision. Require a compact return:
+`DECISION`, `INTERFACES`, `OWNERSHIP`, `RISKS`, `VERIFICATION`, and
+`RECOMMENDED EXECUTION LANE`. Do not ask the planner to implement code.
 
-## Completion report
+## Implementation routing
 
-Report enough routing evidence to make efficiency visible:
+Use the lowest capable lane:
+
+1. **Luna / Low — trivial fast path.** Deterministic, low-risk, explicitly bounded work:
+   copy/config changes, tiny utilities, simple styling, mechanical renames, obvious
+   tests, and localized known-cause fixes.
+2. **Luna / Medium — normal easy-to-medium.** Bounded features with settled architecture:
+   mobile UI/screens from a clear design, forms, validation, CRUD, API wiring, hooks,
+   tests, and predictable multi-file implementation.
+3. **Terra / Medium — medium-to-hard.** Execution requires substantial judgment:
+   unclear root cause, complicated async/state behavior, performance work, interacting
+   refactors, moderately complex algorithms, or unfamiliar subsystem integration.
+4. **Sol / High implementer — hard-to-complex.** Sustained frontier-level reasoning is
+   required throughout execution: difficult migrations, hard concurrency/distributed
+   correctness, security-critical implementation, severe performance pathologies,
+   difficult algorithms, or deeply coupled legacy systems.
+
+Do not route by file count. A large mechanical edit may still be Luna / Low; a tiny
+security/concurrency bug may require higher capability.
+
+## Escalation
+
+Stop early rather than letting a lower lane burn tokens while thrashing.
+
+- Luna / Low -> Luna / Medium, Terra, or Sol.
+- Luna / Medium -> Terra or Sol.
+- Terra / Medium -> Sol.
+- Sol implementer -> primary when implementation evidence changes architecture.
+
+Update the task packet with discovered evidence before escalation. Never resend the same
+unchanged prompt to a struggling worker and never silently substitute role/model/effort.
+
+## Native preflight
+
+Run preflight **once before the first native spawn in a fresh primary task** and reuse it
+within that task unless installation/configuration/runtime evidence changes.
+
+1. Run `../../scripts/install-agents.sh --check` relative to this SKILL.md.
+2. Confirm native exposure of all six roles:
+   - `sol_advisor_luna_low_implementer`
+   - `sol_advisor_luna_implementer`
+   - `sol_advisor_terra_implementer`
+   - `sol_advisor_sol_planner`
+   - `sol_advisor_sol_implementer`
+   - `sol_advisor_sol_reviewer`
+3. When public metadata exposes pins, require:
+   - Luna low -> `gpt-5.6-luna` / `low`
+   - Luna medium -> `gpt-5.6-luna` / `medium`
+   - Terra medium -> `gpt-5.6-terra` / `medium`
+   - Sol planner -> `gpt-5.6-sol` / `high`
+   - Sol implementer -> `gpt-5.6-sol` / `high`
+   - Sol reviewer -> `gpt-5.6-sol` / `high`
+4. If metadata omits model/effort and a native thread ID is available, use
+   `../../scripts/inspect-agent-runtime.sh <thread-id>` as the read-only fallback.
+
+The planner and reviewer request read-only sandboxing. Report observed isolation rather
+than claiming requested isolation was enforced.
+
+## Token-efficient delegation
+
+Before spawning a worker, capture a **small baseline** rather than ingesting the entire
+working tree:
+
+- `git status --short` to identify pre-existing changes;
+- the intended owned paths/files;
+- only the relevant interfaces or snippets the worker actually needs.
+
+Do not paste the complete repository diff or broad conversation history into a routine
+worker. Prefer exact paths and concise acceptance criteria.
+
+### Luna / Low packet
+
+Use the compact contract from `references/role-contracts.md`. For the fast path:
+
+- do not perform broad codebase discovery;
+- do not ask the worker to run the final test suite merely so the parent can rerun it;
+- worker self-checks should be minimal and only when useful to implementation;
+- primary owns the single final targeted verification run.
+
+### Other implementation lanes
+
+Use the full contract only when the task needs it. Keep reports concise and avoid
+returning full diffs because the primary can inspect the actual files directly.
+
+## Primary verification
+
+Verification remains mandatory, but it must be proportionate.
+
+For low-risk/trivial work:
+
+1. Compare `git status --short` with the captured baseline.
+2. Inspect only the worker-owned file delta/hunks, not unrelated pre-existing diffs.
+3. Run the narrowest meaningful targeted test/check **once in the primary**.
+4. Run broader checks such as full typecheck/lint/test suites only when the changed
+   surface, repository policy, or evidence makes them relevant.
+5. Confirm acceptance criteria and preserve unrelated changes.
+
+For normal/harder work, widen verification as risk and blast radius increase.
+
+Do not duplicate expensive verification simply as ritual. If a worker needed a test
+while debugging, the parent still performs the final acceptance check, but avoid
+replaying large redundant logs into the conversation.
+
+## Risk-based fresh Sol review
+
+A fresh `sol_advisor_sol_reviewer` is **not required for every task**.
+
+Require it when any material trigger applies:
+
+- Sol / High implementation was required;
+- auth/authz/security/privacy/cryptography/payments or another sensitive trust boundary
+  changed;
+- destructive persistence/schema migration or meaningful data-loss risk exists;
+- concurrency/race correctness, background execution, native iOS/Android lifecycle,
+  permissions, signing/release, or similarly high-impact platform behavior changed;
+- architecture, public API, durable data model, or broad/high-blast-radius refactor
+  changed materially;
+- verification is incomplete, flaky, ambiguous, or leaves material residual risk;
+- implementation invalidated important planning assumptions;
+- the user explicitly requests independent review;
+- the primary remains materially uncertain after verification.
+
+If none applies and verification passes, record:
 
 ~~~text
-ROUTING REPORT
-PRIMARY: <model / effort>
-IMPLEMENTATION: <agent type / model / effort>
-ROUTING REASON: <why this was the lowest capable lane>
-VERIFICATION: <targeted commands/evidence>
-REVIEW GATE: skipped-low-risk | required
-REVIEW REASON: <why>
-REVIEWER: <agent/model/effort/verdict, or not spawned>
-ESCALATIONS: <none or path + evidence>
+REVIEW GATE: skipped-low-risk
 ~~~
 
-## Optional user-visible Luna app task
+When review is required, spawn `sol_advisor_sol_reviewer` with `fork_turns: none`. Any
+post-review change invalidates the verdict.
 
-If the user explicitly asks for a separate user-visible Luna task, follow
-`references/luna-task-lane.md`. It remains a distinct mechanism. The primary still
-verifies the actual diff and applies the same risk-based final-review gate before
-acceptance.
+## Completion output
+
+Normal completion reports should be compact to avoid spending tokens narrating the
+orchestration itself. Unless the user asks for diagnostics/testing details, report only:
+
+~~~text
+ROUTE: <primary> -> <implementation lane> [-> reviewer if used]
+VERIFY: <concise checks/results>
+REVIEW: skipped-low-risk | <reviewer verdict>
+ESCALATION: none | <path>
+~~~
+
+Use the full routing report only when debugging or benchmarking the router.
+
+## Optional visible Luna app task
+
+If the user explicitly asks for a separate visible Luna task/worktree, follow
+`references/luna-task-lane.md`. The Sol / Medium primary remains controller/verifier;
+use the same planning gate and risk-based review gate.
