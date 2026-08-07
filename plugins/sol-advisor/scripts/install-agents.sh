@@ -7,11 +7,18 @@ usage() {
   cat <<'EOF'
 Usage: install-agents.sh [--target-dir PATH] [--check]
 
-Install Sol Advisor's six native custom-agent templates into the target directory:
-Luna / Low, Luna / Medium, Terra / Medium, on-demand Sol / High planning,
-Sol / High implementation, and Sol / High review. The installer never overwrites an
-unrecognized or modified file. It can safely migrate only exact recognized older Sol
-Advisor Luna and Terra templates.
+Install Sol Advisor's eight native custom-agent templates:
+- Luna / Low implementation
+- Luna / Medium implementation
+- Terra / Medium implementation
+- Terra / High read-only consultant
+- Sol / Low read-only consultant
+- Sol / Medium read-only consultant
+- Sol / High implementation
+- Sol / High final review
+
+The installer never overwrites an unrecognized or modified file. It can safely migrate
+only exact recognized older Sol Advisor Luna and Terra implementation templates.
 
 Without --target-dir, the target is "$CODEX_HOME/agents" when CODEX_HOME is set,
 otherwise "$HOME/.codex/agents".
@@ -55,13 +62,14 @@ esac
 luna_low_file=sol-advisor-luna-low-implementer.toml
 luna_file=sol-advisor-luna-implementer.toml
 terra_file=sol-advisor-terra-implementer.toml
-sol_planner_file=sol-advisor-sol-planner.toml
+terra_high_consultant_file=sol-advisor-terra-high-consultant.toml
+sol_low_consultant_file=sol-advisor-sol-low-consultant.toml
+sol_medium_consultant_file=sol-advisor-sol-medium-consultant.toml
 sol_impl_file=sol-advisor-sol-implementer.toml
 sol_review_file=sol-advisor-sol-reviewer.toml
 
 # Exact historical templates that may be replaced safely. The second Luna/Terra
-# digests are this fork's previous 0.5 routing profiles (Luna / Max, Terra / High), so
-# an already-bootstrapped installation can migrate without being treated as a conflict.
+# digests are this fork's earlier Luna / Max and Terra / High implementation profiles.
 legacy_luna_sha256s="fba1b42849d93737e83b094a2ab0b1611f87ac37db7438c8bbdf581f0813f8eb 046bbd78a1a2bc65f8ea5dd927490aef910fb4ae3b66d045c22e29dbd9585886"
 legacy_terra_sha256s="06c318e5e93f37452635906394e6ea69fb6a65ba9e6ad7172d37b444e0dc871d 4fa7fcbc2f959159d64a85b9072349e8f1c23dd27df5c7e6465619f56a31d454"
 
@@ -108,9 +116,7 @@ install_one() {
   fi
 
   case "$state" in
-    current)
-      printf '%s\n' "ALREADY CURRENT: $destination"
-      ;;
+    current) printf '%s\n' "ALREADY CURRENT: $destination" ;;
     missing)
       cp "$template" "$destination" || fail "could not install $label: $destination"
       printf '%s\n' "INSTALLED: $destination"
@@ -119,9 +125,7 @@ install_one() {
       cp "$template" "$destination" || fail "could not migrate $label: $destination"
       printf '%s\n' "MIGRATED: $destination"
       ;;
-    *)
-      fail "$label destination is $state and will not be overwritten: $destination"
-      ;;
+    *) fail "$label destination is $state and will not be overwritten: $destination" ;;
   esac
 }
 
@@ -129,7 +133,9 @@ for template in \
   "$template_dir/$luna_low_file" \
   "$template_dir/$luna_file" \
   "$template_dir/$terra_file" \
-  "$template_dir/$sol_planner_file" \
+  "$template_dir/$terra_high_consultant_file" \
+  "$template_dir/$sol_low_consultant_file" \
+  "$template_dir/$sol_medium_consultant_file" \
   "$template_dir/$sol_impl_file" \
   "$template_dir/$sol_review_file"
 do
@@ -144,13 +150,15 @@ fi
 
 install_one "Luna low" "$template_dir/$luna_low_file" "$target_dir/$luna_low_file"
 install_one "Luna medium" "$template_dir/$luna_file" "$target_dir/$luna_file" "$legacy_luna_sha256s"
-install_one "Terra medium" "$template_dir/$terra_file" "$target_dir/$terra_file" "$legacy_terra_sha256s"
-install_one "Sol planner" "$template_dir/$sol_planner_file" "$target_dir/$sol_planner_file"
+install_one "Terra medium implementer" "$template_dir/$terra_file" "$target_dir/$terra_file" "$legacy_terra_sha256s"
+install_one "Terra high consultant" "$template_dir/$terra_high_consultant_file" "$target_dir/$terra_high_consultant_file"
+install_one "Sol low consultant" "$template_dir/$sol_low_consultant_file" "$target_dir/$sol_low_consultant_file"
+install_one "Sol medium consultant" "$template_dir/$sol_medium_consultant_file" "$target_dir/$sol_medium_consultant_file"
 install_one "Sol implementer" "$template_dir/$sol_impl_file" "$target_dir/$sol_impl_file"
 install_one "Sol reviewer" "$template_dir/$sol_review_file" "$target_dir/$sol_review_file"
 
 if [ "$check_only" -eq 1 ]; then
-  printf '%s\n' "CHECK PASSED: all six Sol Advisor native roles match exactly."
+  printf '%s\n' "CHECK PASSED: all eight Sol Advisor native roles match exactly."
 else
-  printf '%s\n' "INSTALL PASSED: all six Sol Advisor native roles are current."
+  printf '%s\n' "INSTALL PASSED: all eight Sol Advisor native roles are current."
 fi
