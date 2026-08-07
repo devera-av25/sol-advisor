@@ -1,31 +1,51 @@
 # Sol Advisor
 
-**Sol plans. Luna handles as much easy-to-medium execution as possible. Terra takes
-medium-to-hard work. A separate Sol worker handles hard-to-complex implementation. A
-fresh Sol reviewer stands between the diff and done.**
+**Sol plans and verifies. Luna handles as much routine execution as possible at Low or
+Medium reasoning. Terra takes harder work at Medium. A separate Sol worker is reserved
+for genuinely hard-to-complex implementation. Fresh Sol review is risk-based rather
+than mandatory for every change.**
 
-This fork changes Sol Advisor from a Terra-default workflow into a capability router
-that deliberately pushes routine and medium implementation downward while preserving
-strict role/model verification and final review.
+This fork is optimized for practical Codex Desktop development where latency and token
+usage matter as well as correctness.
 
 ## Routing model
 
-| Stage | Native agent / session | Pinned profile | Purpose |
+| Stage | Native agent / session | Pinned profile | Typical use |
 |---|---|---|---|
-| Planner / router | Primary session | GPT-5.6 Sol / High | Requirements, architecture, decomposition, lane selection, verification, acceptance |
-| Easy-medium implementation | `sol_advisor_luna_implementer` | GPT-5.6 Luna / Max | Default worker for bounded, well-specified execution |
-| Medium-hard implementation | `sol_advisor_terra_implementer` | GPT-5.6 Terra / High | Escalation for harder debugging, broader context, interactions, or risk |
-| Hard-complex implementation | `sol_advisor_sol_implementer` | GPT-5.6 Sol / High | Separate implementation context for sustained frontier-level reasoning |
-| Final review | `sol_advisor_sol_reviewer` | GPT-5.6 Sol / High, requests read-only | Fresh independent-context review of the verified diff |
+| Planner/router/verifier | Primary session | GPT-5.6 Sol / High | Requirements, architecture, routing, verification, acceptance |
+| Trivial implementation | `sol_advisor_luna_low_implementer` | GPT-5.6 Luna / Low | Tiny deterministic low-risk edits |
+| Easy-medium implementation | `sol_advisor_luna_implementer` | GPT-5.6 Luna / Medium | Normal bounded app/UI/API/test work |
+| Medium-hard implementation | `sol_advisor_terra_implementer` | GPT-5.6 Terra / Medium | Harder debugging, async/state, performance, interacting refactors |
+| Hard-complex implementation | `sol_advisor_sol_implementer` | GPT-5.6 Sol / High | Architecture-coupled or frontier-level execution |
+| Conditional independent review | `sol_advisor_sol_reviewer` | GPT-5.6 Sol / High, requests read-only | Only when material risk or uncertainty warrants it |
 
-The primary session should stay on **GPT-5.6 Sol / High**. Even when implementation
-escalates to Sol, it runs in a separate native agent context so planner, implementer,
-and final reviewer remain distinct.
+The primary task should normally stay on **GPT-5.6 Sol / High**. The router optimizes
+worker model **and reasoning effort**, not model family alone.
+
+## Efficiency philosophy
+
+Use the lowest capable lane and escalate only on evidence:
+
+- **Luna / Low** for trivial, mechanical, low-risk work.
+- **Luna / Medium** for most normal easy-to-medium implementation.
+- **Terra / Medium** when execution needs substantial judgment.
+- **Sol / High implementer** only when sustained high-end reasoning is necessary.
+
+Primary Sol verification is mandatory. A fresh Sol reviewer is **not** spawned merely
+because a task completed. It is required for material risk/uncertainty such as security,
+auth/payments, data migration/loss risk, concurrency/background/native lifecycle risk,
+major architecture/public API/data-model changes, incomplete verification, Sol-level
+implementation, or explicit user request.
+
+For fully verified low-risk work the router records:
+
+~~~text
+REVIEW GATE: skipped-low-risk
+~~~
+
+This avoids paying for a second Sol context on routine edits.
 
 ## Recommended first-run setup in Codex Desktop
-
-The preferred setup is intentionally short: give Codex this repository and branch and
-let it run the checked-in bootstrap script.
 
 Repository:
 
@@ -54,54 +74,36 @@ sh scripts/bootstrap-codex.sh --expected-branch agent/luna-terra-sol-routing
 Do not modify or merge the repository. Do not manually overwrite conflicting custom
 agent files. If the bootstrap reports a missing prerequisite or conflict, stop and show
 me the exact error. If it reports BOOTSTRAP PASSED, tell me to fully restart Codex
-Desktop and start a new task using GPT-5.6 Sol with High reasoning. Do not test the
-newly installed native agents from this setup task.
+Desktop and start a new task using GPT-5.6 Sol with High reasoning. Do not test newly
+installed native agents from this setup task.
 ~~~
 
-The bootstrap script performs the deterministic setup work:
+The bootstrap checks dependencies, registers the local marketplace, installs the plugin,
+confirms the installed copy matches the checkout, installs/migrates companion profiles,
+validates exact role/model/effort pins, and prints the restart boundary.
 
-1. Checks that `git`, `codex`, and `jq` are available.
-2. Confirms the checkout and optional expected branch.
-3. Registers the local checkout as a Codex marketplace.
-4. Installs `sol-advisor@sol-advisor`.
-5. Confirms the installed plugin matches this checkout rather than a stale/upstream copy.
-6. Runs the shipped conflict-safe native-agent installer.
-7. Runs the installer's byte-exact `--check` validation.
-8. Verifies all four role names and their exact model/reasoning pins.
-9. Prints `BOOTSTRAP PASSED` and the required restart/new-task boundary.
+## Upgrade an existing 0.5 routing installation
 
-It intentionally does **not** change the parent task's model and does **not** spawn the
-newly installed roles in the bootstrap task. Native agent discovery must be validated
-from a fresh task after restart.
-
-## Manual setup fallback
-
-If you prefer to run the setup yourself, clone the development branch:
+If you already bootstrapped the earlier branch version that used Luna / Max and Terra /
+High, update the checkout and rerun the bootstrap:
 
 ~~~sh
-mkdir -p ~/Developer
-cd ~/Developer
-git clone --branch agent/luna-terra-sol-routing --single-branch \
-  https://github.com/devera-av25/sol-advisor.git \
-  sol-advisor-router-test
-cd sol-advisor-router-test
-~~~
-
-Then run the same canonical bootstrap:
-
-~~~sh
+cd /path/to/your/sol-advisor
+git pull --ff-only
 sh scripts/bootstrap-codex.sh --expected-branch agent/luna-terra-sol-routing
 ~~~
 
-If a prerequisite is missing, install it using the normal package manager for your
-machine and rerun. The bootstrap deliberately does not silently install package
-managers or overwrite unknown custom-agent files.
+The installer recognizes the exact prior Sol Advisor Luna/Max and Terra/High templates
+and migrates only those known versions. It still refuses unknown or locally modified
+agent files.
+
+After `BOOTSTRAP PASSED`, fully quit/restart Codex Desktop and start a new task so the
+five current agent types are discovered.
 
 ## What gets installed
 
-The native companion installer manages exactly these role profiles:
-
 ~~~text
+sol-advisor-luna-low-implementer.toml
 sol-advisor-luna-implementer.toml
 sol-advisor-terra-implementer.toml
 sol-advisor-sol-implementer.toml
@@ -111,93 +113,82 @@ sol-advisor-sol-reviewer.toml
 Expected runtime pins:
 
 ~~~text
-sol_advisor_luna_implementer  -> gpt-5.6-luna / max
-sol_advisor_terra_implementer -> gpt-5.6-terra / high
-sol_advisor_sol_implementer   -> gpt-5.6-sol / high
-sol_advisor_sol_reviewer      -> gpt-5.6-sol / high / requested read-only
+sol_advisor_luna_low_implementer -> gpt-5.6-luna / low
+sol_advisor_luna_implementer     -> gpt-5.6-luna / medium
+sol_advisor_terra_implementer    -> gpt-5.6-terra / medium
+sol_advisor_sol_implementer      -> gpt-5.6-sol / high
+sol_advisor_sol_reviewer         -> gpt-5.6-sol / high / requested read-only
 ~~~
 
-The installer refuses to overwrite unrecognized or modified files. It may migrate only
-exact older Sol Advisor templates that the script can identify safely.
+## Normal use
 
-## After bootstrap
-
-When the bootstrap prints `BOOTSTRAP PASSED`:
-
-1. Fully quit/restart Codex Desktop.
-2. Start a **new** Codex task for the project you actually want to work on.
-3. Select **GPT-5.6 Sol** with **High** reasoning for the primary task.
-4. Invoke the orchestration skill normally.
-
-For example:
+After setup, open the actual project you want to work on, start a new primary Codex task
+with **GPT-5.6 Sol / High**, and invoke the skill:
 
 ~~~text
-Use $sol-advisor:orchestration to implement this feature. Plan with Sol / High, prefer
-Luna for bounded implementation, escalate to Terra or Sol only when needed, verify the
-actual diff, and obtain the fresh Sol review before reporting done.
+Use $sol-advisor:orchestration to implement this feature. Route through the lowest
+capable model/effort lane, verify the actual diff, and use independent Sol review only
+when the risk gate requires it.
 ~~~
 
-The skill cannot switch the primary model itself. If the primary is not Sol / High, it
-must stop before delegation rather than claim the prerequisite is satisfied.
+The skill cannot silently change the primary model. Worker model and effort are pinned
+by their native custom-agent profiles.
 
-## Routing philosophy
+## Example routing
 
-The router prefers the lowest capable lane rather than reserving Luna only for trivial
-work:
+A tiny copy/config/utility change should normally become:
 
-- **Luna / Max first** for easy-to-medium work whose architecture and acceptance
-  criteria are already clear.
-- **Terra / High** when execution requires substantial judgment, difficult debugging,
-  broader context, non-obvious interactions, or elevated risk.
-- **Sol / High implementer** when architecture and implementation must repeatedly
-  inform each other or the task requires sustained frontier-level reasoning.
+~~~text
+Sol / High -> Luna / Low -> primary verification -> done
+~~~
 
-Lower lanes may return an evidence-backed escalation request. The primary updates the
-specification with what was discovered and escalates rather than repeating the same
-unchanged attempt.
+A normal mobile screen or bounded feature should normally become:
+
+~~~text
+Sol / High -> Luna / Medium -> primary verification -> done
+~~~
+
+A difficult async/state bug may become:
+
+~~~text
+Sol / High -> Terra / Medium -> primary verification -> review only if risk warrants
+~~~
+
+A difficult architecture-coupled migration may become:
+
+~~~text
+Sol / High architect -> separate Sol / High implementer -> primary verification
+                    -> fresh Sol / High reviewer
+~~~
+
+Lower lanes may return evidence-backed escalation requests. The primary updates the task
+packet with discoveries before escalating rather than repeating an unchanged attempt.
 
 ## Runtime verification
 
-Before native delegation, the skill requires the installer check to pass and all four
-agent types to be available. Native spawn/details metadata is the primary routing
-evidence. When the host exposes model and effort, they must match the role pins above.
-
-If Desktop omits model or effort and local rollout metadata is accessible, use the
-read-only runtime inspector:
+Native spawn/details metadata is the primary routing evidence. If Desktop omits model or
+effort and a native thread ID is available, use the existing read-only inspector:
 
 ~~~sh
 plugin_dir="$(codex plugin list --json | jq -r '.installed[] | select(.pluginId == "sol-advisor@sol-advisor") | .source.path')"
 sh "$plugin_dir/scripts/inspect-agent-runtime.sh" <native-subagent-thread-id>
 ~~~
 
-There is no silent model, effort, or role fallback.
+There is no silent role/model/effort fallback.
 
-## Verification and final review
-
-Every implementation worker receives a complete specification covering objective,
-file ownership, interfaces, constraints, and verification. Worker completion reports
-are treated as claims: the primary inspects the actual diff, confirms scope, and reruns
-verification.
-
-After parent verification, the primary always spawns a fresh
-`sol_advisor_sol_reviewer`. The reviewer returns exactly:
-
-- `ship` — completion may be reported;
-- `fix-first` — delegate corrections, verify again, then obtain another fresh review;
-- `rethink` — revise architecture before continuing.
-
-Any post-review change invalidates the previous verdict.
+The reviewer requests a read-only sandbox, but hosts may expose broader permissions. The
+router reports observed isolation rather than claiming requested isolation was enforced;
+when broader permissions are observed, repository state must be checked before and
+after review.
 
 ## Optional user-visible Luna task lane
 
-The original user-visible Luna app-task workflow remains in
-`plugins/sol-advisor/skills/orchestration/references/luna-task-lane.md`. Use it only
-when the user explicitly requests a separate Codex app task. The native Luna worker is
-the normal easy-to-medium lane for this fork.
+The separate app-task workflow remains available in
+`plugins/sol-advisor/skills/orchestration/references/luna-task-lane.md` only when the
+user explicitly requests a visible Codex app task/worktree. Its default Luna effort is
+Medium and the same risk-based final-review gate applies.
 
 ## Local development without the bootstrap
-
-The underlying manual commands remain available for debugging:
 
 ~~~sh
 cd /absolute/path/to/sol-advisor
