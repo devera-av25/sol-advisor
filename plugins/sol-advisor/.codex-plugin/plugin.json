@@ -1,7 +1,7 @@
 {
   "name": "sol-advisor",
   "version": "0.5.0",
-  "description": "Sol-led capability router: plan with GPT-5.6 Sol / High, delegate easy-medium implementation to Luna / Max, medium-hard to Terra / High, hard-complex to a separate Sol / High worker, then require a fresh Sol review.",
+  "description": "Sol-led capability router: delegate easy-medium execution to Luna / Max, medium-hard to Terra / High, hard-complex to a separate Sol / High implementer, then require a fresh Sol / High review.",
   "author": {"name": "Daniel McAteer", "url": "https://github.com/DannyMac180"},
   "homepage": "https://github.com/devera-av25/sol-advisor#readme",
   "repository": "https://github.com/devera-av25/sol-advisor",
@@ -10,16 +10,16 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Sol Advisor",
-    "shortDescription": "Plan with Sol; route execution through Luna, Terra, or Sol; finish with fresh Sol review.",
-    "longDescription": "GPT-5.6 Sol / High owns planning and routing. Native implementation defaults to GPT-5.6 Luna / Max for easy-to-medium work, escalates to GPT-5.6 Terra / High for medium-to-hard work, and uses a separate GPT-5.6 Sol / High implementation context for hard-to-complex work. The primary verifies the actual diff and a fresh requested-read-only Sol / High reviewer must approve completion.",
+    "shortDescription": "Plan with Sol, route execution across Luna, Terra, or Sol, then obtain a fresh Sol review.",
+    "longDescription": "Sol Advisor keeps GPT-5.6 Sol / High as the primary architect and router, prefers a native GPT-5.6 Luna / Max worker for bounded easy-to-medium implementation, escalates medium-to-hard work to GPT-5.6 Terra / High, uses a separate GPT-5.6 Sol / High implementation context for hard-to-complex execution, verifies the actual diff in the parent, and requires a fresh GPT-5.6 Sol / High final reviewer before completion.",
     "developerName": "Daniel McAteer",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "websiteURL": "https://github.com/devera-av25/sol-advisor",
     "defaultPrompt": [
-      "Use Sol Advisor to plan with Sol / High and route this implementation through the lowest capable lane.",
-      "Prefer Luna for bounded work, escalate to Terra or Sol only when implementation complexity requires it.",
-      "Verify the diff and obtain a fresh Sol / High review before reporting completion."
+      "Use Sol Advisor to plan with Sol / High and route implementation through the lowest capable native lane.",
+      "Prefer Luna for bounded work; escalate to Terra or a separate Sol implementer only when execution requires it.",
+      "Verify the actual diff and obtain a fresh Sol / High reviewer verdict before reporting completion."
     ]
   }
 }
