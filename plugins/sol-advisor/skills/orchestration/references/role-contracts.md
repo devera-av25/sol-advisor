@@ -1,39 +1,73 @@
 # Native Codex role contracts
 
-Use these contracts with Sol Advisor's namespaced, role-pinned native custom agents.
-The primary session plans and routes; implementation runs in a separate Luna, Terra,
-or Sol context; final review runs in a fresh Sol context. Adapt every placeholder
-without removing a required field.
+Use these contracts with Sol Advisor's namespaced, role-pinned native agents. The
+primary session plans and routes; implementation runs in a separate Luna, Terra, or Sol
+context; independent Sol review is conditional on the risk gate.
 
 The separate [Luna task-lane contract](luna-task-lane.md) covers explicitly requested
 user-visible Codex app tasks. It is optional and does not replace the native router.
 
 ## Required preflight
 
-Before every native spawn:
+Before the first native delegation in a fresh primary task:
 
-1. Require the non-mutating companion check to prove all four installed files exactly
+1. Require the non-mutating companion check to prove all five installed files exactly
    match current templates.
-2. Require native exposure of exactly:
+2. Require native exposure of:
+   - `sol_advisor_luna_low_implementer`
    - `sol_advisor_luna_implementer`
    - `sol_advisor_terra_implementer`
    - `sol_advisor_sol_implementer`
    - `sol_advisor_sol_reviewer`
-3. Observe the selected role, model, and effort through public spawn/details metadata
-   first, using the local runtime inspector only for omitted fields. Accept only:
-   - Luna / Max for `sol_advisor_luna_implementer`
-   - Terra / High for `sol_advisor_terra_implementer`
+3. Observe the selected role/model/effort through public metadata first, using the local
+   runtime inspector only for omitted fields. Accept only:
+   - Luna / Low for `sol_advisor_luna_low_implementer`
+   - Luna / Medium for `sol_advisor_luna_implementer`
+   - Terra / Medium for `sol_advisor_terra_implementer`
    - Sol / High for `sol_advisor_sol_implementer`
    - Sol / High for `sol_advisor_sol_reviewer`
-4. For the reviewer, capture actual sandbox policy and permission profile types.
+4. For reviewer spawns, capture actual sandbox and permission-profile types.
 
-A missing, stale, unsafe, conflicting, unavailable, inconsistent, or unobservable
-role/model/effort stops the lane. Never silently fall back. Model and effort are pinned
-by custom-agent TOML, so omit native per-spawn overrides.
+A successful preflight may be reused within the same primary task unless installation,
+configuration, or runtime evidence changes. Never silently fall back. Model and effort
+are pinned by custom-agent TOML, so omit native per-spawn overrides.
 
-## Shared implementation contract
+## Compact implementation contract
 
-Every implementation prompt must contain all five sections:
+Use this for the Luna / Low fast path when the task is deterministic and low risk.
+
+~~~text
+ROLE
+Execute this trivial, bounded task directly. Do not perform broad discovery or redesign.
+Escalate early if the task is not actually mechanical/low risk.
+
+OBJECTIVE
+<Exact observable outcome.>
+
+OWNERSHIP
+You may modify only:
+- <exact path(s)>
+Preserve unrelated/concurrent edits.
+
+ACCEPTANCE
+- <concrete behavior/result>
+- <compatibility constraint if any>
+
+VERIFY
+- Run: <targeted command>
+  Success: <expected evidence>
+
+RETURN
+STATUS: complete | blocked | escalate
+CHANGES: <actual diff summary>
+VERIFIED: <exact command + evidence>
+ESCALATION: none | luna-medium: <reason> | terra: <reason> | sol: <reason>
+~~~
+
+## Full implementation contract
+
+Use this for Luna / Medium, Terra / Medium, Sol / High, or any task whose contract needs
+more detail.
 
 ~~~text
 OBJECTIVE
@@ -43,9 +77,8 @@ FILES AND OWNERSHIP
 You own only:
 - <exact file or module>
 
-You are not alone in the codebase. Other agents or the user may be editing concurrently.
-Preserve their edits, do not revert unrelated work, and adapt to changes already present.
-Do not modify files outside your ownership.
+You are not alone in the codebase. Preserve concurrent edits, do not revert unrelated
+work, and do not modify files outside your ownership.
 
 INTERFACES
 - <Signatures, types, schemas, commands, or behavior that must remain compatible.>
@@ -60,9 +93,9 @@ VERIFICATION
   Success: <concrete expected evidence>
 
 RETURN
-Return exact commands and actual evidence. A completion claim without evidence is invalid.
-If the lane is materially underpowered for the discovered problem, return an escalation
-report instead of repeatedly attempting the same failed approach.
+Return exact commands and actual evidence. A completion claim without evidence is
+invalid. If the lane is materially underpowered, return an escalation report instead
+of repeatedly attempting the same failed approach.
 
 IMPLEMENTATION REPORT
 STATUS: complete | partial | blocked | escalate
@@ -71,12 +104,29 @@ CHANGES: <file-by-file summary from the actual diff>
 VERIFIED: <exact commands plus concrete output evidence>
 JUDGMENT CALLS: <decisions the specification left open, or none>
 GAPS: <unfinished work, ambiguity, or none>
-ESCALATION: <none | Terra: reason | Sol: reason>
+ESCALATION: <none | luna-medium: reason | terra: reason | sol: reason | primary: reason>
 ~~~
 
-The primary session must inspect the diff and rerun verification itself.
+The primary session must inspect the diff and rerun appropriate verification itself.
 
-## Luna / Max - default easy-medium lane
+## Luna / Low - trivial fast path
+
+Spawn exactly:
+
+~~~text
+agent_type: sol_advisor_luna_low_implementer
+fork_turns: none
+~~~
+
+Use only when the desired change is deterministic, explicitly bounded, low risk, and
+requires little or no discovery. Examples: copy/config edits, tiny utilities,
+straightforward styling, mechanical renames, obvious test additions, and known-cause
+localized fixes.
+
+Use the Compact implementation contract. If meaningful reasoning appears, escalate
+instead of stretching this lane.
+
+## Luna / Medium - default easy-medium lane
 
 Spawn exactly:
 
@@ -85,24 +135,23 @@ agent_type: sol_advisor_luna_implementer
 fork_turns: none
 ~~~
 
-Use Luna when the implementation is bounded and mostly determined by the specification.
-This is the preferred lane for straightforward features, UI work from an existing
-design, CRUD, localized known-cause fixes, tests, validation, API wiring, mechanical
-refactors, boilerplate, and medium-sized work with settled architecture.
+Use for bounded implementation that needs normal reasoning but has settled architecture:
+ordinary mobile UI/screens, forms, hooks, validation, CRUD, API integration, tests, and
+medium-sized predictable multi-file changes.
 
 Prompt role header:
 
 ~~~text
 ROLE
 Act as Sol Advisor's default easy-to-medium implementation worker. Execute the supplied
-specification within the settled architecture. If implementation reveals substantial
-ambiguity, difficult debugging, cross-system coupling, elevated risk, or a materially
-wider blast radius, stop thrashing and return an evidence-backed escalation request.
+specification proportionally within the settled architecture. If implementation reveals
+substantial ambiguity, difficult debugging, cross-system coupling, elevated risk, or a
+materially wider blast radius, stop early and return an evidence-backed escalation.
 
-<paste and complete the Shared implementation contract>
+<paste and complete the Full implementation contract>
 ~~~
 
-## Terra / High - medium-hard escalation lane
+## Terra / Medium - medium-hard lane
 
 Spawn exactly:
 
@@ -111,21 +160,22 @@ agent_type: sol_advisor_terra_implementer
 fork_turns: none
 ~~~
 
-Use Terra when execution itself requires substantial judgment, difficult debugging,
-broader context, non-obvious interactions, moderately complex algorithms, performance
-work, or elevated operational/security risk, but does not yet require sustained Sol-
-level reasoning throughout implementation.
+Use when execution requires substantial judgment: unclear root cause, complicated
+async/state behavior, performance analysis, broad interacting refactors, moderately
+complex algorithms, or unfamiliar subsystem integration. Terra should still avoid
+unnecessary exploration and should escalate to Sol when sustained frontier reasoning is
+required.
 
 Prompt role header:
 
 ~~~text
 ROLE
 Act as Sol Advisor's medium-to-hard implementation worker. Resolve difficult
-implementation details within the settled architecture. If evidence shows the task
-requires sustained frontier-level reasoning or invalidates core architectural
-assumptions, return an evidence-backed Sol escalation request.
+implementation details within the supplied architecture. If evidence shows architecture
+and implementation can no longer be separated or sustained frontier-level reasoning is
+needed, return an evidence-backed Sol escalation.
 
-<paste and complete the Shared implementation contract>
+<paste and complete the Full implementation contract>
 ~~~
 
 ## Sol / High - hard-complex implementation lane
@@ -137,37 +187,65 @@ agent_type: sol_advisor_sol_implementer
 fork_turns: none
 ~~~
 
-Use this lane for implementation where architecture, debugging, and code changes must
-continually inform each other: difficult migrations, hard concurrency/distributed
-behavior, severe performance issues, security-sensitive implementation with evolving
-design decisions, difficult algorithms, or deeply coupled legacy systems.
+Use only where architecture/debugging/code changes must continually inform each other:
+difficult migrations, security-sensitive implementation, hard concurrency/distributed
+correctness, severe performance issues, difficult algorithms, or deeply coupled legacy
+systems.
 
-This must be a separate context from both the primary Sol architect and final reviewer.
+This must be a separate context from the primary Sol architect and, when required, the
+fresh reviewer.
 
 Prompt role header:
 
 ~~~text
 ROLE
 Act as Sol Advisor's hard-to-complex implementation worker. Use sustained frontier-level
-reasoning while executing the supplied specification. Challenge settled assumptions
-only when implementation evidence requires it, and report those conflicts explicitly.
-Do not broaden scope silently.
+reasoning while executing the supplied specification. Challenge assumptions only when
+implementation evidence requires it and report conflicts explicitly. Do not broaden
+scope silently.
 
-<paste and complete the Shared implementation contract>
+<paste and complete the Full implementation contract>
 ~~~
 
-## Fresh Sol / High - requested-read-only final reviewer
+## Review gate
 
-After parent verification, spawn a new native thread exactly:
+Primary verification is mandatory. Fresh Sol review is conditional.
+
+Set `REVIEW GATE: required` if any material trigger applies:
+
+- Sol implementation was required;
+- auth/authz/security/privacy/cryptography/payments or another sensitive trust boundary
+  changed;
+- destructive persistence/schema/data migration or meaningful data-loss risk exists;
+- concurrency/race correctness, background execution, native iOS/Android lifecycle,
+  permissions, signing/release, or similarly high-impact platform behavior changed;
+- architecture, public API, durable data model, or broad/high-blast-radius refactor
+  changed materially;
+- verification is incomplete, flaky, ambiguous, or leaves material residual risk;
+- implementation invalidated important planning assumptions;
+- the user explicitly requests independent review;
+- the primary remains materially uncertain after verification.
+
+If none applies and verification fully passes, use:
+
+~~~text
+REVIEW GATE: skipped-low-risk
+REVIEW REASON: <short evidence-based reason>
+~~~
+
+Do not spawn the reviewer merely to satisfy ritual process.
+
+## Fresh Sol / High reviewer
+
+When the review gate is required, spawn a new native thread exactly:
 
 ~~~text
 agent_type: sol_advisor_sol_reviewer
 fork_turns: none
 ~~~
 
-The installed role pins GPT-5.6 Sol at high reasoning and requests a read-only sandbox.
-Observe the actual role, pin, sandbox policy, and permission profile before accepting
-its verdict.
+The role pins GPT-5.6 Sol / High and requests read-only sandboxing. Observe actual role,
+pin, sandbox policy, and permission profile before accepting its verdict.
 
 Prompt:
 
@@ -186,12 +264,11 @@ INTERFACES AND CONSTRAINTS
 - <Compatibility, repository rules, safety boundaries, and excluded scope.>
 
 VERIFICATION EVIDENCE
-- <command> -> <actual primary-session output evidence>
-- <artifact or diff inspection> -> <actual evidence>
+- <command> -> <actual primary-session evidence>
 
 REVIEW
-Inspect the actual files and accumulated change set. Judge correctness, completeness,
-regressions, scope discipline, interface preservation, test adequacy, and material risk.
+Judge correctness, completeness, regressions, scope discipline, interface preservation,
+test adequacy, and material risk.
 
 SOL REVIEW
 VERDICT: ship | fix-first | rethink
@@ -200,31 +277,27 @@ FINDINGS: <precise file references and required fixes, or none>
 RESIDUAL RISK: <most important remaining risk, or none>
 ~~~
 
-If any fix is made after review, discard the verdict and run a new fresh review.
-Sol reviewing Sol is context-clean, not cross-model-family independence.
+Any fix after review invalidates the verdict and requires a fresh review if the review
+gate still applies. The reviewer never implements its own fixes.
 
 Use observed isolation, not requested isolation:
 
 - With observed `read-only`, proceed with enforced isolation.
-- If the host broadens it, proceed only when hard isolation is not required, the
-  prompt forbids edits, and the parent captures and verifies exact before-and-after
-  repository and artifact state. Report the broader policy and profile.
-- If isolation is unobservable, hard isolation is required, or any mutation occurs,
-  stop the lane and do not hide or repair the mutation under that verdict.
+- If the host broadens permissions, proceed only when hard isolation is not required,
+  the prompt forbids edits, and the primary records exact before/after repository state
+  and verifies no mutation. Report the broader policy.
+- If isolation is unobservable, hard isolation is required, or mutation occurs, stop the
+  reviewer lane and do not hide the problem.
 
 ## Optional user-visible Luna app task
 
-When the user explicitly asks for a separate user-visible Luna task, follow
-[luna-task-lane.md](luna-task-lane.md). Use the app-task packet and Luna / Max routing
-defined there. After the task returns, the primary still inspects its actual diff,
-reruns verification, and then obtains the same fresh native Sol reviewer verdict before
-reporting completion.
+When explicitly requested, follow [luna-task-lane.md](luna-task-lane.md). After the task
+returns, the primary verifies the actual diff and applies this same review gate.
 
 ## Commitment-boundary Sol consult
 
 For pre-implementation review of a consequential architecture, migration, public API,
-or wide refactor, spawn the fresh Sol reviewer with `fork_turns: none`. Give it the
-proposed decision, goal, constraints, relevant paths, alternatives, and the one question
-that changes the plan. Require `proceed`, `change`, or `stop`, plus the decisive reason
-and largest risk. Apply the same preflight, runtime-observation, sandbox-reporting, and
-no-fallback rules.
+or wide refactor, the reviewer role may be used as a fresh read-only consult. Give it
+the proposed decision, goal, constraints, alternatives, and the one question that can
+change the plan. Require `proceed`, `change`, or `stop`, plus the decisive reason and
+largest risk. This is separate from the post-implementation review gate.
