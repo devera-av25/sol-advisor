@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: "Token-efficient capability router: Terra / Medium is the normal planner-controller-verifier, planning escalates Terra High -> Sol Low -> Sol Medium only when needed, implementation prefers Luna Low/Medium then Terra Medium, and verification escalates Terra High -> Sol Low/Medium/High by risk and complexity."
+description: "Token-efficient capability router: Terra / Medium is the normal planner-controller-verifier, planning escalates Terra High -> Sol Low -> Sol Medium only when needed, implementation prefers Luna Low/Medium then Terra Medium, and verification normally stops at Terra High with Sol reserved for break-glass cases."
 ---
 
 # Sol Advisor Orchestration
@@ -127,21 +127,19 @@ workers. Use the compact Luna / Low packet for trivial work. The Luna / Low work
 not need to rerun the parent's final test suite just to report it; the primary owns the
 single final acceptance run.
 
-## Verification ladder
+## Verification policy
 
-Verification starts with the Terra / Medium primary and scales independently from the
-implementation model.
+Verification scales independently from the implementation model, but **normal
+verification stops at Terra / High**.
 
 ~~~text
 Terra / Medium primary verification
-        ↓ if stronger reasoning on same model is warranted
+        ↓ only when stronger same-model reasoning is warranted
 Terra / High consultant
-        ↓ only if stronger model capability is warranted
-Sol / Low consultant
-        ↓ if insufficient
-Sol / Medium consultant
-        ↓ only for exceptional residual risk/uncertainty
-Sol / High reviewer
+        ↓
+NORMAL STOP
+
+Sol verification is a separate BREAK-GLASS path, not the next routine tier.
 ~~~
 
 Use `MODE: verification` for consultant spawns.
@@ -158,33 +156,78 @@ targeted checks. For these tasks:
    evidence makes them relevant;
 5. confirm acceptance criteria and preserve unrelated work.
 
-### Terra / High verification
+### Terra / High verification — normal ceiling
 
-Use when verification is reasoning-heavy or the blast radius is wider, but a stronger
-model is not yet necessary: subtle state logic, broader refactors, difficult edge cases,
-performance-sensitive behavior, or moderately complex integration.
+Use when verification is reasoning-heavy or the blast radius is wider: subtle state
+logic, broader refactors, difficult edge cases, performance-sensitive behavior,
+moderately complex integration, or important changes where Terra / Medium leaves
+material uncertainty.
 
-### Sol / Low verification
+Terra / High is the **normal verification ceiling**. If it can reach a confident verdict,
+stop. Do not use Sol merely because a stronger model might produce a better review.
 
-Upgrade models only when Terra is not sufficient to judge the change reliably. Start at
-Sol / Low for bounded but consequential verification where stronger model capability is
-useful without deep reasoning.
+### Sol verification — strict break-glass gate
 
-### Sol / Medium verification
+Sol verification MUST NOT be spawned as a routine continuation after Terra / High.
+Except for an explicit user request for Sol/strongest review or an obviously critical
+case where Terra / High would add no useful intermediate evidence, all of the following
+must be true first:
 
-Use for higher-impact architecture/API/data-model changes, difficult concurrency or
-native lifecycle behavior, security-sensitive changes, Sol-implemented work, or when Sol
-/ Low leaves material uncertainty.
+1. Terra / High verification has already been attempted.
+2. Terra / High reports **material unresolved correctness uncertainty** rather than a
+   generic preference for stronger review.
+3. The unresolved uncertainty has meaningful consequences such as severe security/auth
+   failure, destructive or irreversible data loss, high-impact migration/schema risk,
+   payment/financial correctness, signing/release-critical behavior, public
+   API/protocol compatibility, or similarly high-impact correctness risk.
 
-### Sol / High verification — exceptional
+These are NOT sufficient reasons by themselves:
+
+- normal feature work;
+- UI or React Native changes;
+- ordinary bug fixes/refactors/utilities/tests;
+- medium-complexity work;
+- touching multiple files;
+- implementation by Terra;
+- implementation by Sol;
+- "Sol would review this better."
+
+Using Sol for implementation does **not** imply Sol verification. A valid route is Sol /
+High implementation followed by Terra / High verification when Terra can confidently
+judge the resulting evidence.
+
+If the strict gate is satisfied, use the lowest sufficient Sol tier:
+
+~~~text
+BREAK GLASS
+Sol / Low consultant
+        ↓ only if still materially unresolved
+Sol / Medium consultant
+        ↓ only for exceptional residual risk/uncertainty
+Sol / High reviewer
+~~~
+
+#### Sol / Low break-glass verification
+
+Use only after the gate above is satisfied, for a bounded high-consequence uncertainty
+where stronger model capability may resolve the issue without deep Sol reasoning.
+
+#### Sol / Medium break-glass verification
+
+Use only when Sol / Low still leaves material high-consequence uncertainty, or when the
+break-glass issue clearly requires deeper Sol reasoning. Do not select it merely because
+the implementation used Sol or touched architecture/data-model code.
+
+#### Sol / High break-glass review — exceptional
 
 Use the existing `sol_advisor_sol_reviewer` only when the strongest independent review
-is justified: severe residual uncertainty, very high-impact security/data-loss/signing/
-release risk, incomplete or conflicting evidence, extremely complex implementation, or
-an explicit request for strongest review.
+is justified after lower break-glass tiers remain insufficient, or when the user
+explicitly requests strongest review. Typical cases are severe unresolved
+security/data-loss/signing/release risk or incomplete/conflicting critical evidence.
 
 Do not spawn an independent verifier merely as ritual. Low-risk work can complete after
-Terra / Medium primary verification.
+Terra / Medium verification; harder ordinary work should normally complete by Terra /
+High.
 
 ## Consultant contract
 
@@ -198,6 +241,10 @@ EVIDENCE/QUESTION: <what must be decided or verified>
 RETURN: <concise decision/verdict + escalation recommendation if needed>
 ~~~
 
+For verification, a recommendation to use Sol must identify the unresolved material
+uncertainty and its concrete high-consequence risk. Without both, the primary must not
+spawn Sol verification.
+
 Do not send unrelated repository history.
 
 ## Completion output
@@ -208,10 +255,13 @@ Unless the user asks for benchmark diagnostics, keep the report compact:
 PLAN: <Terra Medium | Terra High | Sol Low | Sol Medium>
 IMPLEMENT: <lane>
 VERIFY: <Terra Medium | Terra High | Sol Low | Sol Medium | Sol High> — <checks/result>
+SOL VERIFY: no | yes — <break-glass reason>
 ESCALATION: none | <path + reason>
 ~~~
 
 ## Optional visible Luna app task
 
 If explicitly requested, follow `references/luna-task-lane.md`. The Terra / Medium
-primary remains controller and uses the same graduated planning and verification ladders.
+primary remains controller. Planning uses the normal graduated ladder; verification
+normally stops at Terra / High and uses Sol only through the same strict break-glass
+gate.
