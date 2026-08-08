@@ -5,8 +5,9 @@ Luna execution. It is separate from the normal native Luna lanes and is used onl
 the user specifically asks for a separate Codex app task/worktree.
 
 The normal primary GPT-5.6 Terra / Medium task remains controller, routine planner,
-verification owner, PR authority, and acceptor. It uses the same graduated planning and
-verification ladders as the native router.
+verification owner, PR authority, and acceptor. It uses the same graduated planning
+ladder and the same Terra-normal/Sol-break-glass verification policy as the native
+router.
 
 ## Authorization and capability gate
 
@@ -27,7 +28,8 @@ Native Luna and app-task Luna are separate execution mechanisms.
 5. Wait/read the handoff and inspect the actual worktree/diff independently.
 6. Send corrections to the same task when needed.
 7. Authorize PR creation only after primary acceptance.
-8. Apply the same graduated verification ladder as the native router.
+8. Apply the same verification policy as the native router: Terra / Medium by default,
+   Terra / High as the normal ceiling, and Sol only through the strict break-glass gate.
 
 ## Task packet
 
@@ -72,8 +74,15 @@ The Terra / Medium primary:
 - inspects the actual worktree/changed-file scope;
 - runs proportionate final verification;
 - uses Terra / High verification when stronger same-model reasoning is warranted;
-- upgrades verification to Sol / Low, then Sol / Medium, and only exceptionally Sol /
-  High when stronger model capability/risk justifies it;
-- uses the same planning ladder Terra Medium -> Terra High -> Sol Low -> Sol Medium if
-  a new material planning decision appears;
+- treats Terra / High as the normal verification ceiling and stops when it can reach a
+  confident verdict;
+- does not upgrade verification to Sol merely because the app-task was complex, touched
+  multiple files, or used a stronger implementation model;
+- may use Sol verification only when the native router's strict break-glass gate is
+  satisfied: Terra / High has already been attempted, specific material correctness
+  uncertainty remains, and that uncertainty has meaningful high-consequence impact;
+- when the break-glass gate is satisfied, starts Sol verification at Sol / Low and
+  escalates further only while material high-consequence uncertainty remains;
+- uses the planning ladder Terra Medium -> Terra High -> Sol Low -> Sol Medium if a new
+  material planning decision appears;
 - authorizes PR actions explicitly.
