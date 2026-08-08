@@ -1,7 +1,8 @@
 # Sol Advisor
 
-**Terra / Medium controls by default. Luna handles routine execution. Planning and
-verification scale upward only when complexity or risk justifies the extra cost.**
+**Terra / Medium controls by default. Luna handles routine execution. Planning scales
+upward only when needed, while normal verification stops at Terra / High and reserves
+Sol for break-glass cases.**
 
 This fork is optimized for practical Codex Desktop development where token/credit usage,
 latency, and correctness all matter.
@@ -43,31 +44,57 @@ medium-hard                -> Terra / Medium
 hard-complex               -> separate Sol / High implementer
 ~~~
 
-### Verification ladder
+### Verification policy
+
+Normal verification now has a hard Terra ceiling:
 
 ~~~text
 Terra / Medium primary
         ↓ when stronger same-model reasoning is warranted
 Terra / High consultant
-        ↓ only when stronger model capability is warranted
-Sol / Low consultant
-        ↓ if needed
-Sol / Medium consultant
-        ↓ exceptional residual risk/uncertainty only
+        ↓
+NORMAL STOP
+~~~
+
+Sol is **not** the next normal verification tier. It is a separate break-glass path.
+Except for an explicit request for strongest/Sol review or an obviously critical case
+where Terra / High would add no useful intermediate evidence, Sol verification requires:
+
+1. Terra / High verification has already been attempted.
+2. Terra / High still has specific material unresolved correctness uncertainty.
+3. That uncertainty has meaningful high-consequence impact such as severe security/auth,
+   destructive or irreversible data loss, high-impact migration/schema risk,
+   payment/financial correctness, signing/release-critical behavior, or substantial
+   public API/protocol compatibility risk.
+
+If that gate is satisfied, use the lowest sufficient Sol tier:
+
+~~~text
+BREAK GLASS
+Sol / Low
+   ↓ only if still materially unresolved
+Sol / Medium
+   ↓ exceptional residual risk only
 Sol / High reviewer
 ~~~
 
+Routine feature work, UI changes, ordinary bugs/refactors/tests, multiple changed files,
+or use of Terra/Sol for implementation do not qualify by themselves. In particular,
+**Sol implementation does not imply Sol verification**.
+
 This means routine low-risk work can plan with Terra / Medium, implement with Luna /
 Low or Medium, and finish after targeted Terra / Medium verification without paying for
-an additional Sol context.
+an additional Sol context. Harder ordinary work should normally finish by Terra / High.
 
 ## Efficiency rules
 
 - Use the lowest capable model and reasoning effort.
 - Prefer increasing reasoning effort before changing to a more expensive model family.
-- When upgrading from Terra to Sol for planning or verification, start Sol at Low.
+- When upgrading from Terra to Sol for planning, start Sol at Low.
 - Planning normally stops at Sol / Medium.
-- Sol / High verification is exceptional, not ritual.
+- Normal verification stops at Terra / High.
+- Sol verification is break-glass only and requires unresolved high-consequence risk.
+- Sol implementation never automatically triggers Sol verification.
 - Capture only a small pre-delegation Git baseline and inspect worker-owned deltas.
 - Run the narrowest meaningful final test/check once in the primary for trivial work.
 - Do not run full typecheck/lint/test suites unless repository policy, changed surface,
@@ -91,7 +118,8 @@ sol_advisor_sol_reviewer            -> gpt-5.6-sol / high / requested read-only
 ~~~
 
 The consultant roles are read-only planning-or-verification lanes. A task packet sets
-`MODE: planning` or `MODE: verification` explicitly.
+`MODE: planning` or `MODE: verification` explicitly. For verification, Sol consultant
+use is additionally constrained by the break-glass gate above.
 
 ## Setup / upgrade in Codex Desktop
 
@@ -125,12 +153,8 @@ After `BOOTSTRAP PASSED`, fully quit/restart Codex Desktop and start a **new** t
 GPT-5.6 Terra / Medium
 ~~~
 
-Then invoke:
-
-~~~text
-Use $sol-advisor:orchestration to implement this task. Use the normal efficiency-first
-planning, implementation, and verification ladders.
-~~~
+Then invoke the orchestration skill directly, or let a repository `AGENTS.md` invoke it
+automatically for implementation work.
 
 The skill cannot silently switch the primary model itself.
 
@@ -154,16 +178,35 @@ Harder async/state work:
 Terra / Medium plan -> optional Terra / High planning consult
                     -> Terra / Medium implementation
                     -> Terra / High verification if warranted
+                    -> done
 ~~~
 
-Architecture-sensitive work where Terra is insufficient:
+Hard implementation that does not need Sol verification:
+
+~~~text
+Terra planning tier as needed
+        -> Sol / High implementation
+        -> Terra / High verification
+        -> done
+~~~
+
+Break-glass verification example:
+
+~~~text
+Terra / High verification
+        -> unresolved material high-consequence risk
+        -> Sol / Low verification
+        -> Sol / Medium or High only if still required
+~~~
+
+Architecture-sensitive planning where Terra is insufficient:
 
 ~~~text
 Terra / Medium -> Terra / High planning consult
                -> Sol / Low planning consult
                -> Sol / Medium only if still needed
                -> appropriate implementation lane
-               -> verification starts from Terra and scales independently
+               -> verification starts with Terra and normally stops by Terra / High
 ~~~
 
 ## Runtime verification
@@ -185,8 +228,9 @@ claiming requested isolation was enforced.
 ## Optional visible Luna task lane
 
 A separate user-visible Luna app task/worktree remains available only when explicitly
-requested. Its default worker is Luna / Medium and the Terra-first planning/verification
-ladders still apply.
+requested. Its default worker is Luna / Medium. Planning uses the normal graduated
+ladder; verification normally stops at Terra / High and uses Sol only through the strict
+break-glass gate.
 
 ## Attribution
 
