@@ -1,7 +1,8 @@
 # Native Codex role contracts
 
 The normal primary is GPT-5.6 Terra / Medium. Planning and verification scale upward
-independently and only when evidence justifies the extra reasoning/model cost.
+independently and only when evidence justifies the extra reasoning/model cost. Normal
+verification stops at Terra / High; Sol verification is break-glass only.
 
 ## Required preflight
 
@@ -52,11 +53,17 @@ RETURN
 DECISION/VERDICT: <concise result>
 REASON: <decisive evidence>
 RISKS/FINDINGS: <material items or none>
+UNRESOLVED MATERIAL UNCERTAINTY: none | <specific uncertainty>
+CONSEQUENCE IF WRONG: none | <specific meaningful consequence>
 NEXT TIER: none | terra-high | sol-low | sol-medium | sol-high-review
 ~~~
 
 For planning, `sol-high-review` is invalid: Sol / Medium is the maximum normal planning
 tier. Consultants never edit files or implement fixes.
+
+For verification, `sol-low`, `sol-medium`, or `sol-high-review` is invalid unless the
+strict break-glass gate in the Verification section is satisfied. A generic statement
+that Sol would provide a better review is not sufficient.
 
 ## Planning ladder
 
@@ -202,14 +209,24 @@ fork_turns: none
 
 Reserve for genuinely hard-to-complex execution requiring sustained frontier reasoning.
 
-## Verification ladder
+## Verification policy
 
 The Terra / Medium primary is the default verifier. It captures a small pre-delegation
 baseline, inspects only worker-owned changed hunks, and runs the narrowest meaningful
 final test/check once. Broader full-project checks run only when policy, blast radius,
 or evidence requires them.
 
-### Terra / High verification
+Normal verification has two tiers:
+
+~~~text
+Terra / Medium primary
+        ↓ only if stronger same-model reasoning is needed
+Terra / High consultant
+        ↓
+NORMAL STOP
+~~~
+
+### Terra / High verification — normal ceiling
 
 ~~~text
 agent_type: sol_advisor_terra_high_consultant
@@ -218,9 +235,54 @@ MODE: verification
 ~~~
 
 Use for subtle logic, wider refactors, harder edge cases, performance-sensitive changes,
-or other verification that needs more reasoning but not a stronger model.
+or other verification that needs more reasoning. If Terra / High can reach a confident
+verdict, stop. It is the normal verification ceiling.
 
-### Sol / Low verification
+### Strict Sol break-glass gate
+
+Sol verification is not the next routine tier after Terra / High. Except when the user
+explicitly requests Sol/strongest review or an obviously critical case makes a Terra /
+High intermediate pass clearly wasteful, all three conditions are mandatory before any
+Sol verifier may be spawned:
+
+1. Terra / High verification has already been attempted.
+2. Terra / High identifies **specific material unresolved correctness uncertainty**.
+3. That uncertainty has meaningful high-consequence impact, such as:
+   - severe security/auth/authorization failure;
+   - destructive or irreversible data loss;
+   - high-impact migration/schema risk;
+   - payment or financial correctness;
+   - signing/release-critical correctness;
+   - public API/protocol compatibility with substantial downstream impact;
+   - similarly high-impact correctness risk.
+
+The following do not satisfy the gate by themselves:
+
+- normal feature work;
+- UI/mobile changes;
+- ordinary bugs/refactors/utilities/tests;
+- medium complexity;
+- multiple changed files;
+- Terra implementation;
+- Sol implementation;
+- architecture/data-model involvement without unresolved high-consequence uncertainty;
+- a preference for a "better" or more independent review.
+
+**Implementation tier never determines verification tier.** In particular, Sol / High
+implementation may still finish with Terra / High verification when Terra can confidently
+judge the resulting change and evidence.
+
+A verification consultant recommending Sol must return both:
+
+~~~text
+UNRESOLVED MATERIAL UNCERTAINTY: <specific unresolved issue>
+CONSEQUENCE IF WRONG: <specific high-consequence impact>
+~~~
+
+If either is `none`, vague, or unsupported by evidence, the primary MUST NOT spawn Sol
+verification.
+
+### Sol / Low break-glass verification
 
 ~~~text
 agent_type: sol_advisor_sol_low_consultant
@@ -228,10 +290,11 @@ fork_turns: none
 MODE: verification
 ~~~
 
-Use when Terra is insufficient to judge a bounded consequential change reliably. This is
-the first stronger-model verification tier.
+This is the first break-glass Sol tier, not a normal escalation step. Use only after the
+strict gate is satisfied, for a bounded high-consequence uncertainty where stronger
+model capability may resolve the issue without deep Sol reasoning.
 
-### Sol / Medium verification
+### Sol / Medium break-glass verification
 
 ~~~text
 agent_type: sol_advisor_sol_medium_consultant
@@ -239,23 +302,25 @@ fork_turns: none
 MODE: verification
 ~~~
 
-Use for higher-impact architecture/API/data-model changes, difficult concurrency/native
-lifecycle behavior, security-sensitive changes, Sol-implemented work, or unresolved
-material uncertainty after Sol / Low.
+Use only if Sol / Low still leaves material high-consequence uncertainty, or the gated
+issue clearly requires deeper Sol reasoning. Do not choose it merely because Sol /
+High implemented the change.
 
-### Sol / High final review
+### Sol / High break-glass final review
 
 ~~~text
 agent_type: sol_advisor_sol_reviewer
 fork_turns: none
 ~~~
 
-Use only for exceptional residual uncertainty or very high-impact risk: severe
-security/data-loss/signing/release concerns, incomplete/conflicting evidence, extremely
-complex implementation, or explicit strongest-review request.
+Use only when lower break-glass tiers remain insufficient for exceptional residual
+uncertainty or very high-impact risk, or when the user explicitly requests strongest
+review. Typical examples are unresolved severe security/data-loss/signing/release risk
+or incomplete/conflicting critical evidence.
 
 Send only the goal, relevant owned-file change set or base/head reference, material
-constraints, and concise verification evidence. The reviewer never edits files.
+constraints, the unresolved uncertainty, its consequence, and concise verification
+evidence. The reviewer never edits files.
 
 ## Isolation
 
@@ -266,4 +331,5 @@ verdict. Do not claim requested isolation was enforced when it was not.
 ## Optional visible Luna app task
 
 When explicitly requested, follow [luna-task-lane.md](luna-task-lane.md). The Terra /
-Medium primary uses the same graduated planning and verification ladders.
+Medium primary uses the same planning ladder and the same Terra-normal/Sol-break-glass
+verification policy.
