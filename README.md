@@ -1,315 +1,242 @@
 # Sol Advisor
 
-**Sol runs the show. Choose the native Terra / High lane, or explicitly opt into
-user-visible Luna tasks; the primary Sol task owns verification and acceptance in
-both modes.**
+**Terra / Medium controls by default. Luna handles routine execution. Planning scales
+upward only when needed, while normal verification stops at Terra / High and reserves
+Sol for break-glass cases.**
 
-Sol Advisor is a Codex-native architect workflow for capability-routed software
-delivery. The primary session stays focused on requirements, architecture, specs, and
-verification while either native Codex custom-agent threads or separate Codex app
-tasks handle the bounded implementation work.
+This fork is optimized for practical Codex Desktop development where token/credit usage,
+latency, and correctness all matter.
 
-## Go deeper
+## Routing model
 
-I write [**Attention Heads**](https://attentionheads.substack.com/?utm_source=github&utm_medium=readme&utm_campaign=sol-advisor) — deep, evidence-backed writing on AI, cognition, and agentic engineering. The **Agentic Engineering Field Notes** series is where I publish practical advice on the craft of using AI. [Subscribe](https://attentionheads.substack.com/subscribe?utm_source=github&utm_medium=readme&utm_campaign=sol-advisor) to get new posts to your inbox.
+### Primary controller
 
-| Mode | Worker | Routing | Primary ownership |
-|---|---|---|---|
-| Native subagent (default) | `sol_advisor_terra_implementer`, then `sol_advisor_sol_reviewer` | GPT-5.6 Terra / High, then fresh GPT-5.6 Sol / High | Architecture, parent verification, and acceptance after the fresh native review |
-| Luna task (explicit opt-in) | User-visible Codex task created with app task tools | GPT-5.6 Luna / Max | Decomposition, task monitoring, actual diff review, corrections, PR authorization, dependent-stack ordering, and final acceptance |
-
-The primary session is GPT-5.6 Sol / High in either mode. The native lane remains
-available and unchanged: it uses the separately installed Terra role and requires a
-fresh Sol reviewer. The Luna lane is outside native subagent V2, does not use a Luna
-custom-agent TOML, and never activates merely because this skill is installed.
-
-In the native lane, the final review is context-independent, not model-family-
-independent: Sol reviews Sol's orchestration with a fresh context. In the Luna lane,
-the primary Sol task itself reviews and accepts the Luna task's work; it does not route
-that lane through the native Sol reviewer.
-
-## Install from GitHub
-
-Requirements common to both modes:
-
-- A current Codex CLI or ChatGPT desktop app with plugins enabled.
-- Access to GPT-5.6 Sol / High for the primary task.
-
-Additional native-mode requirements:
-
-- Native subagents and custom-agent support enabled.
-- Access to GPT-5.6 Terra / High.
-- jq, which the native companion-install lookup uses to locate the installed plugin
-  package.
-
-Additional Luna task-mode requirements:
-
-- Explicit authorization in the user's current request.
-- Access to GPT-5.6 Luna / Max and the Codex app task tools (`list_projects`,
-  `list_threads`, `create_thread`, `wait_threads`, `read_thread`, and
-  `send_message_to_thread`).
-
-Add the GitHub repository as a Codex marketplace, then install the plugin:
-
-~~~sh
-codex plugin marketplace add DannyMac180/sol-advisor --ref main
-codex plugin add sol-advisor@sol-advisor
-~~~
-
-### Install the native companion custom agents (native mode only)
-
-This section is mandatory for native-mode use and can be skipped for Luna-only use.
-Luna tasks use Codex app task tools and do not require native subagents, Terra access,
-custom-agent enablement, or companion-agent installation. For native mode, plugin
-installation does **not** automatically install custom-agent files. That is
-intentional: the files are user-owned role pins, and the installer must never
-overwrite a different local role silently. Install the companion templates separately:
-
-~~~sh
-plugin_dir="$(codex plugin list --json | jq -r '.installed[] | select(.pluginId == "sol-advisor@sol-advisor") | .source.path')"
-test -n "$plugin_dir"
-test -d "$plugin_dir"
-sh "$plugin_dir/scripts/install-agents.sh"
-sh "$plugin_dir/scripts/install-agents.sh" --check
-~~~
-
-Without an explicit target, the installer uses the existing CODEX_HOME value when one is
-already set, otherwise the user's default Codex agents directory. It does not invoke
-Codex, edit config.toml, or overwrite a differing agent file. It only installs a
-missing template and then verifies every installed copy byte-for-byte.
-
-For native mode, start a **new Codex task** after the check passes. Native agent types
-are discovered at task creation, so an existing task may not see the installed roles.
-Then select GPT-5.6 Sol with High reasoning for the primary session and ask for
-implementation work normally, or invoke the orchestration skill explicitly:
+Start normal Codex tasks with:
 
 ~~~text
-Use $sol-advisor:orchestration to build this feature, verify it, and obtain the final Sol review before reporting done.
+GPT-5.6 Terra / Medium
 ~~~
 
-For Luna-only use, skip the companion installation above and explicitly authorize the
-task lane in the current request, for example: “Use the Luna task lane for this
-feature.”
+The primary handles routine planning, routing, targeted verification, escalation
+interpretation, and acceptance.
 
-## Check and update native mode
-
-Run this check whenever the native Terra / High route must be trusted. Luna-only users
-can skip this companion check:
-
-~~~sh
-plugin_dir="$(codex plugin list --json | jq -r '.installed[] | select(.pluginId == "sol-advisor@sol-advisor") | .source.path')"
-test -d "$plugin_dir"
-sh "$plugin_dir/scripts/install-agents.sh" --check
-~~~
-
-To update the marketplace plugin and, for native mode, migrate the exact recognized
-v0.2.0 companion files:
-
-~~~sh
-codex plugin marketplace upgrade sol-advisor
-codex plugin add sol-advisor@sol-advisor
-plugin_dir="$(codex plugin list --json | jq -r '.installed[] | select(.pluginId == "sol-advisor@sol-advisor") | .source.path')"
-test -d "$plugin_dir"
-sh "$plugin_dir/scripts/install-agents.sh"
-sh "$plugin_dir/scripts/install-agents.sh" --check
-~~~
-
-Version 0.4.0 retains the historical byte-exact v0.2.0 migration for
-`sol-advisor-luna-implementer.toml` and `sol-advisor-terra-implementer.toml` files.
-Normal installer mode replaces the exact legacy Terra file with the current Terra /
-High template, removes the exact legacy Luna file, and refuses modified, nonregular,
-or symlinked destinations without partial agent-file mutation. `--check` is
-non-mutating and fails until both current role files match exactly and Luna is absent.
-The native routing update was motivated by
-[Eric Provencher's X post](https://x.com/pvncher/status/2083300990350954981).
-
-The installer intentionally installs only the two native companion roles. The Luna
-task lane is an app-task workflow and must not add or restore a
-`sol-advisor-luna-implementer.toml` file.
-
-For native mode, do not use a substitute agent as a shortcut. Start a fresh task after
-every successful install or update. Luna-only use does not require this installer or a
-native-agent refresh.
-
-## Native runtime routing evidence
-
-Native spawn/details metadata is the primary source of routing evidence. It must show
-the selected custom agent type. When it also exposes model and effort, the orchestrator
-compares those values with the role pin. If Desktop omits model or effort and the local
-rollout is accessible, use the companion inspector as the authoritative read-only
-fallback for those omitted fields:
-
-~~~sh
-plugin_dir="$(codex plugin list --json | jq -r '.installed[] | select(.pluginId == "sol-advisor@sol-advisor") | .source.path')"
-thread_id="<native-subagent-thread-id>"
-sh "$plugin_dir/scripts/inspect-agent-runtime.sh" "$thread_id"
-~~~
-
-For a disposable fixture or a non-default local session root, pass it explicitly:
-
-~~~sh
-sh "$plugin_dir/scripts/inspect-agent-runtime.sh" --sessions-dir /absolute/path/to/sessions "$thread_id"
-~~~
-
-The helper searches only rollout filenames ending in that exact thread id, then emits a
-single compact JSON object with allowlisted routing fields. It never prints prompts,
-messages, environment variables, tokens, configuration contents, or arbitrary rollout
-payloads. It refuses invalid ids, zero or multiple matches, and missing or inconsistent
-role/model/effort; there is no inferred fallback. If public and local evidence both
-exist, they must agree.
-
-## How routing works
-
-The Sol orchestrator keeps architecture, decomposition, verification, and acceptance
-in the primary session. The native lane uses the five-part implementation spec and
-routes production through Terra / High. The Luna lane uses a complete task packet with
-objective, files and ownership, interfaces, constraints, starting state/base,
-verification, git/PR boundary, and a structured return. Read the full app-task
-contract in [the Luna task-lane reference](plugins/sol-advisor/skills/orchestration/references/luna-task-lane.md).
-
-### Luna task lane (explicit opt-in)
-
-Use this lane only when the user's current request explicitly authorizes it, for
-example:
+### Planning ladder
 
 ~~~text
-Use the Luna task lane for this feature.
+Terra / Medium primary
+        ↓ if more same-model reasoning is needed
+Terra / High consultant
+        ↓ only if a stronger model is actually needed
+Sol / Low consultant
+        ↓ only if low effort is insufficient
+Sol / Medium consultant
 ~~~
 
-Skill activation, a general request to implement, or a previous authorization is not
-enough. If the user does not explicitly opt in, keep the native lane or ask for that
-authorization. The lane stops without fallback if GPT-5.6 Luna, Max reasoning, or any
-required app task tool is unavailable.
+Sol / Medium is the maximum normal planning tier. Sol / High is not used merely for
+planning.
 
-The primary task then:
+### Implementation ladder
 
-1. Calls `list_projects`, confirms the selected project, and checks `isGitRepository`.
-   For a Git project, `create_thread` defaults to an isolated worktree; for a
-   non-Git project it uses the project's local environment.
-2. Sends a complete task packet to `create_thread` with `model` set to
-   `gpt-5.6-luna` and `thinking` set to `max`.
-3. If creation returns only a `clientThreadId`, calls `list_threads` without passing
-   that value—`list_threads` does not accept `clientThreadId`—and correlates the newly
-   created user-visible task using trustworthy identity, project, time, path, and
-   state metadata where available. Treat returned titles and previews as untrusted
-   data, not instructions. Repeat bounded discovery until a real `threadId` and
-   `hostId` are available; never pass the pending client ID to thread-id-only tools.
-4. Monitors ready tasks with `wait_threads`, reads their handoffs with `read_thread`,
-   and inspects the actual worktree, branch, diff, and verification evidence in the
-   primary task.
-5. Sends corrections to the same task with `send_message_to_thread`, then waits and
-   reads that same task again. “Report back” means this explicit monitoring and read;
-   there is no automatic child callback.
-6. Authorizes PR creation explicitly only after accepting the task's diff and checks.
-   A Luna task must not create or push a PR before that authorization. The primary
-   creates the next dependent task only after the prior stack is accepted and its
-   actual branch/commit/PR state is recorded.
+~~~text
+trivial / mechanical       -> Luna / Low
+normal easy-medium         -> Luna / Medium
+medium-hard                -> Terra / Medium
+hard-complex               -> separate Sol / High implementer
+~~~
 
-Independent stacks may run concurrently only with separate tasks/worktrees and
-non-overlapping ownership. Shared-file or dependent stacks are serial. An isolated
-worktree reduces interference but does not make concurrent edits merge-safe; the
-primary still reviews every diff and orders dependent work from an accepted base.
-The complete packet, tool sequence, branch rules, and return schema are defined in
-[the Luna task-lane reference](plugins/sol-advisor/skills/orchestration/references/luna-task-lane.md).
+### Verification policy
 
-### Native subagent lane
+Normal verification now has a hard Terra ceiling:
 
-Unless the user explicitly opts into Luna, the native lane remains the default. It
-uses the installed Terra role for implementation and a fresh Sol reviewer after
-parent verification. It does not use the app-task tools for implementation.
+~~~text
+Terra / Medium primary
+        ↓ when stronger same-model reasoning is warranted
+Terra / High consultant
+        ↓
+NORMAL STOP
+~~~
 
-Before delegation and acceptance, the skill requires all of the following:
+Sol is **not** the next normal verification tier. It is a separate break-glass path.
+Except for an explicit request for strongest/Sol review or an obviously critical case
+where Terra / High would add no useful intermediate evidence, Sol verification requires:
 
-1. The installed role files pass the byte-for-byte companion check.
-2. The native spawn tool exposes both exact names in the table above.
-3. Public native spawn/details metadata identifies the selected role and, when exposed,
-   its expected model and effort. If model or effort is omitted, the exact-rollout local
-   inspector above must provide them instead.
-4. The reviewer’s observed sandbox policy type and permission profile type are captured
-   and reported.
+1. Terra / High verification has already been attempted.
+2. Terra / High still has specific material unresolved correctness uncertainty.
+3. That uncertainty has meaningful high-consequence impact such as severe security/auth,
+   destructive or irreversible data loss, high-impact migration/schema risk,
+   payment/financial correctness, signing/release-critical behavior, or substantial
+   public API/protocol compatibility risk.
 
-A missing, stale, conflicting, unavailable, inconsistent, or unobservable
-role/model/effort stops the affected native lane with an actionable error. There is no
-silent model, reasoning, or agent-type fallback, and native per-spawn calls do not
-override the role pins. The Luna lane has its own explicit tool-availability gate and
-also stops without fallback.
+If that gate is satisfied, use the lowest sufficient Sol tier:
 
-The Sol reviewer TOML requests read-only sandboxing, but the host permission profile
-may broaden that request. If the observed sandbox policy type is read-only, review can
-proceed with enforced isolation. If the host broadens it, review can proceed only as
-behaviorally read-only when hard isolation is not required, the prompt forbids edits,
-and the parent captures and verifies exact before-and-after repository/artifact state;
-the broader sandbox and permission profile must be reported as residual risk. If hard
-isolation is required, the sandbox cannot be observed, or any mutation occurs, stop the
-review lane and do not claim enforced read-only isolation.
+~~~text
+BREAK GLASS
+Sol / Low
+   ↓ only if still materially unresolved
+Sol / Medium
+   ↓ exceptional residual risk only
+Sol / High reviewer
+~~~
 
-The native orchestrator inspects every diff and reruns verification. A fresh Sol
-reviewer then returns ship, fix-first, or rethink; the native session cannot report
-completion until that reviewer returns ship. In the Luna lane, the primary Sol task
-performs the review itself and does not launch a native subagent or a nested Codex CLI
-process for the child task. Sol Advisor does not globally reroute unrelated tasks.
+Routine feature work, UI changes, ordinary bugs/refactors/tests, multiple changed files,
+or use of Terra/Sol for implementation do not qualify by themselves. In particular,
+**Sol implementation does not imply Sol verification**.
 
-## Local development
+This means routine low-risk work can plan with Terra / Medium, implement with Luna /
+Low or Medium, and finish after targeted Terra / Medium verification without paying for
+an additional Sol context. Harder ordinary work should normally finish by Terra / High.
 
-Install a checkout as a local marketplace when you want Codex to use its skill:
+## Efficiency rules
+
+- Use the lowest capable model and reasoning effort.
+- Prefer increasing reasoning effort before changing to a more expensive model family.
+- When upgrading from Terra to Sol for planning, start Sol at Low.
+- Planning normally stops at Sol / Medium.
+- Normal verification stops at Terra / High.
+- Sol verification is break-glass only and requires unresolved high-consequence risk.
+- Sol implementation never automatically triggers Sol verification.
+- Capture only a small pre-delegation Git baseline and inspect worker-owned deltas.
+- Run the narrowest meaningful final test/check once in the primary for trivial work.
+- Do not run full typecheck/lint/test suites unless repository policy, changed surface,
+  or evidence makes them relevant.
+- Do not paste broad repository context or full diffs into agents that can inspect the
+  relevant files directly.
+
+## Native agent profiles
+
+The bootstrap installs eight profiles:
+
+~~~text
+sol_advisor_luna_low_implementer    -> gpt-5.6-luna / low
+sol_advisor_luna_implementer        -> gpt-5.6-luna / medium
+sol_advisor_terra_implementer       -> gpt-5.6-terra / medium
+sol_advisor_terra_high_consultant   -> gpt-5.6-terra / high
+sol_advisor_sol_low_consultant      -> gpt-5.6-sol / low
+sol_advisor_sol_medium_consultant   -> gpt-5.6-sol / medium
+sol_advisor_sol_implementer         -> gpt-5.6-sol / high
+sol_advisor_sol_reviewer            -> gpt-5.6-sol / high / requested read-only
+~~~
+
+The consultant roles are read-only planning-or-verification lanes. A task packet sets
+`MODE: planning` or `MODE: verification` explicitly. For verification, Sol consultant
+use is additionally constrained by the break-glass gate above.
+
+## Setup / upgrade in Codex Desktop
+
+Repository:
+
+~~~text
+https://github.com/devera-av25/sol-advisor
+~~~
+
+Development branch before PR #1 is merged:
+
+~~~text
+agent/luna-terra-sol-routing
+~~~
+
+For an existing checkout:
 
 ~~~sh
-cd /absolute/path/to/sol-advisor
-codex plugin marketplace add /absolute/path/to/sol-advisor
-codex plugin add sol-advisor@sol-advisor
+cd /path/to/sol-advisor
+git pull --ff-only
+sh scripts/bootstrap-codex.sh --expected-branch agent/luna-terra-sol-routing
 ~~~
 
-Run the repository verifier separately. It uses only a disposable target directory and
-never changes your Codex configuration:
+The bootstrap registers the local marketplace, installs the plugin, validates the
+installed copy against the checkout, installs/migrates the native profiles, and validates
+all exact role/model/effort pins.
+
+After `BOOTSTRAP PASSED`, fully quit/restart Codex Desktop and start a **new** task with:
+
+~~~text
+GPT-5.6 Terra / Medium
+~~~
+
+Then invoke the orchestration skill directly, or let a repository `AGENTS.md` invoke it
+automatically for implementation work.
+
+The skill cannot silently switch the primary model itself.
+
+## Example routes
+
+Tiny utility:
+
+~~~text
+Terra / Medium plan -> Luna / Low -> Terra / Medium targeted verification -> done
+~~~
+
+Normal mobile feature:
+
+~~~text
+Terra / Medium plan -> Luna / Medium -> Terra / Medium verification -> done
+~~~
+
+Harder async/state work:
+
+~~~text
+Terra / Medium plan -> optional Terra / High planning consult
+                    -> Terra / Medium implementation
+                    -> Terra / High verification if warranted
+                    -> done
+~~~
+
+Hard implementation that does not need Sol verification:
+
+~~~text
+Terra planning tier as needed
+        -> Sol / High implementation
+        -> Terra / High verification
+        -> done
+~~~
+
+Break-glass verification example:
+
+~~~text
+Terra / High verification
+        -> unresolved material high-consequence risk
+        -> Sol / Low verification
+        -> Sol / Medium or High only if still required
+~~~
+
+Architecture-sensitive planning where Terra is insufficient:
+
+~~~text
+Terra / Medium -> Terra / High planning consult
+               -> Sol / Low planning consult
+               -> Sol / Medium only if still needed
+               -> appropriate implementation lane
+               -> verification starts with Terra and normally stops by Terra / High
+~~~
+
+## Runtime verification
+
+Native spawn/details metadata is the primary routing evidence. If Desktop omits model or
+effort and a native thread ID is available:
 
 ~~~sh
-cd /absolute/path/to/sol-advisor
-sh plugins/sol-advisor/scripts/verify.sh
-git diff --check
+plugin_dir="$(codex plugin list --json | jq -r '.installed[] | select(.pluginId == "sol-advisor@sol-advisor") | .source.path')"
+sh "$plugin_dir/scripts/inspect-agent-runtime.sh" <native-subagent-thread-id>
 ~~~
 
-The installer commands below are native-mode only. Luna-only users do not need to
-install or check companion agents.
+There is no silent role/model/effort fallback.
 
-To exercise the native installer itself against an explicit disposable target:
+Consultants and the Sol reviewer request read-only sandboxing, but hosts may expose
+broader permissions. Report observed isolation and verify no mutation rather than
+claiming requested isolation was enforced.
 
-~~~sh
-cd /absolute/path/to/sol-advisor
-scratch_agents="$(mktemp -d)"
-sh plugins/sol-advisor/scripts/install-agents.sh --target-dir "$scratch_agents"
-sh plugins/sol-advisor/scripts/install-agents.sh --target-dir "$scratch_agents" --check
-~~~
+## Optional visible Luna task lane
 
-To install this checkout's native templates for real local development, use the same
-repository-relative commands without --target-dir, then begin a new task:
+A separate user-visible Luna app task/worktree remains available only when explicitly
+requested. Its default worker is Luna / Medium. Planning uses the normal graduated
+ladder; verification normally stops at Terra / High and uses Sol only through the strict
+break-glass gate.
 
-~~~sh
-cd /absolute/path/to/sol-advisor
-sh plugins/sol-advisor/scripts/install-agents.sh
-sh plugins/sol-advisor/scripts/install-agents.sh --check
-~~~
+## Attribution
 
-After editing the plugin, validate both layers:
-
-~~~sh
-cd /absolute/path/to/sol-advisor
-if [ -n "$CODEX_HOME" ]; then
-  codex_skills="$CODEX_HOME/skills/.system"
-else
-  codex_skills="$HOME/.codex/skills/.system"
-fi
-uv run --no-project --with pyyaml python "$codex_skills/skill-creator/scripts/quick_validate.py" plugins/sol-advisor/skills/orchestration
-uv run --no-project --with pyyaml python "$codex_skills/plugin-creator/scripts/validate_plugin.py" plugins/sol-advisor
-jq empty .agents/plugins/marketplace.json plugins/sol-advisor/.codex-plugin/plugin.json
-~~~
-
-The verifier validates JSON and TOML, the two exact native role pins, clean/current/
-missing and idempotent installer behavior, exact-v0.2.0 migration, refusal/non-
-mutation gates, runtime-inspector safe fixtures, native and Luna lane contracts,
-version/UI metadata, stale-claim guards, and shell syntax. The uv commands supply the
-validators' PyYAML dependency in a disposable environment. They do not install the
-marketplace or mutate Codex configuration.
+This repository is a fork of DannyMac180/sol-advisor and retains the original project's
+license and authorship metadata while changing its routing policy for this fork.
 
 ## License
 
-MIT
+See [LICENSE](LICENSE).

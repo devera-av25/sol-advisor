@@ -1,21 +1,25 @@
 {
   "name": "sol-advisor",
-  "version": "0.4.0",
-  "description": "Codex-native architect workflow with a native Terra / High lane plus an explicit opt-in, user-visible Luna task lane, with primary-session verification and acceptance.",
+  "version": "0.7.1",
+  "description": "Token-efficient capability router: Terra / Medium controls by default, planning escalates Terra High then Sol Low/Medium, implementation stays cheap-first, and normal verification stops at Terra High with Sol reserved for break-glass cases.",
   "author": {"name": "Daniel McAteer", "url": "https://github.com/DannyMac180"},
-  "homepage": "https://github.com/DannyMac180/sol-advisor#readme",
-  "repository": "https://github.com/DannyMac180/sol-advisor",
+  "homepage": "https://github.com/devera-av25/sol-advisor#readme",
+  "repository": "https://github.com/devera-av25/sol-advisor",
   "license": "MIT",
-  "keywords": ["codex", "orchestration", "multi-agent", "gpt-5.6"],
+  "keywords": ["codex", "orchestration", "multi-agent", "gpt-5.6", "routing", "efficiency"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Sol Advisor",
-    "shortDescription": "Orchestrate with Sol, use native Terra / High or opt-in Luna tasks, and verify the accepted diff.",
-    "longDescription": "Sol Advisor gives Codex two explicit delivery modes: GPT-5.6 Sol keeps architecture, decomposition, verification, and acceptance in the primary session; the native mode uses a separately installed GPT-5.6 Terra / High role and a fresh Sol reviewer, while the opt-in Luna mode creates user-visible GPT-5.6 Luna / Max tasks through list_projects, list_threads, create_thread, wait_threads, read_thread, and send_message_to_thread and keeps review, corrections, PR authorization, and dependent-stack ordering in the primary session.",
+    "shortDescription": "Default to Terra, delegate cheaply, and keep Sol verification break-glass only.",
+    "longDescription": "Sol Advisor uses GPT-5.6 Terra / Medium as the normal primary controller. Planning escalates through Terra / High, Sol / Low, and Sol / Medium only when justified. Implementation prefers Luna / Low or Medium, then Terra / Medium, reserving Sol / High for genuinely hard execution. Verification normally stops at Terra / High; Sol verification is allowed only for explicitly requested strongest review or unresolved material high-consequence risk through a strict break-glass gate.",
     "developerName": "Daniel McAteer",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
-    "websiteURL": "https://github.com/DannyMac180/sol-advisor",
-    "defaultPrompt": ["Use Sol Advisor's native lane to build this feature, verify it, and obtain the fresh Sol review before completion.", "Use the Luna task lane only when I explicitly authorize it; keep primary review and acceptance in this task."]
+    "websiteURL": "https://github.com/devera-av25/sol-advisor",
+    "defaultPrompt": [
+      "Use Sol Advisor with Terra / Medium as the default controller and route work through the lowest capable lane.",
+      "Plan upward only as needed: Terra High, then Sol Low, then Sol Medium; do not use Sol High for planning.",
+      "Verify with Terra first and normally stop at Terra High; use Sol verification only through the strict break-glass gate."
+    ]
   }
 }

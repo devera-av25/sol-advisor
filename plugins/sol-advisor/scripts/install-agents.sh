@@ -7,45 +7,85 @@ usage() {
   cat <<'EOF'
 Usage: install-agents.sh [--target-dir PATH] [--check]
 
-Install Sol Advisor's two current custom-agent templates into the target directory.
-Normal mode also migrates only the exact v0.2.0 companion files: it replaces the
-legacy Terra template and removes the legacy Luna template. It never overwrites a
-modified, nonregular, or symlinked destination.
+Install Sol Advisor's eight native custom-agent templates:
+- Luna / Low implementation
+- Luna / Medium implementation
+- Terra / Medium implementation
+- Terra / High read-only consultant
+- Sol / Low read-only consultant
+- Sol / Medium read-only consultant
+- Sol / High implementation
+- Sol / High final review
 
-Without --target-dir, the target is "$CODEX_HOME/agents" when CODEX_HOME is already
-set, otherwise "$HOME/.codex/agents".
+The installer never overwrites an unrecognized or modified file. It can safely migrate
+only exact recognized older Sol Advisor Luna and Terra implementation templates.
 
-Options:
-  --target-dir PATH  Explicit destination directory (absolute or relative).
-  --check            Verify that Terra and Sol match exactly and no legacy Luna file
-                     remains; do not create, replace, or remove anything.
-  --help             Show this help text.
+Without --target-dir, the target is "$CODEX_HOME/agents" when CODEX_HOME is set,
+otherwise "$HOME/.codex/agents".
 EOF
 }
 
-fail() {
-  printf '%s\n' "ERROR: $*" >&2
-  exit 1
+fail() { printf '%s\n' "ERROR: $*" >&2; exit 1; }
+path_exists() { [ -e "$1" ] || [ -L "$1" ]; }
+sha256_file() { shasum -a 256 "$1" 2>/dev/null | awk 'NF >= 1 { print $1; exit }'; }
+
+script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd) || exit 1
+template_dir=$script_dir/../agents
+
+if [ -n "${CODEX_HOME-}" ]; then
+  target_dir=$CODEX_HOME/agents
+else
+  [ -n "${HOME-}" ] || fail "HOME is unset and CODEX_HOME was not supplied; pass --target-dir."
+  target_dir=$HOME/.codex/agents
+fi
+
+check_only=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --target-dir)
+      [ "$#" -ge 2 ] || fail "--target-dir requires a path"
+      target_dir=$2
+      shift 2
+      ;;
+    --check) check_only=1; shift ;;
+    --help|-h) usage; exit 0 ;;
+    *) fail "unknown argument: $1" ;;
+  esac
+done
+
+case "$target_dir" in
+  /*) ;;
+  *) target_dir=$(pwd -P)/$target_dir ;;
+esac
+[ "$target_dir" != "/" ] || fail "refusing to use filesystem root"
+
+luna_low_file=sol-advisor-luna-low-implementer.toml
+luna_file=sol-advisor-luna-implementer.toml
+terra_file=sol-advisor-terra-implementer.toml
+terra_high_consultant_file=sol-advisor-terra-high-consultant.toml
+sol_low_consultant_file=sol-advisor-sol-low-consultant.toml
+sol_medium_consultant_file=sol-advisor-sol-medium-consultant.toml
+sol_impl_file=sol-advisor-sol-implementer.toml
+sol_review_file=sol-advisor-sol-reviewer.toml
+
+# Exact historical templates that may be replaced safely. The second Luna/Terra
+# digests are this fork's earlier Luna / Max and Terra / High implementation profiles.
+legacy_luna_sha256s="fba1b42849d93737e83b094a2ab0b1611f87ac37db7438c8bbdf581f0813f8eb 046bbd78a1a2bc65f8ea5dd927490aef910fb4ae3b66d045c22e29dbd9585886"
+legacy_terra_sha256s="06c318e5e93f37452635906394e6ea69fb6a65ba9e6ad7172d37b444e0dc871d 4fa7fcbc2f959159d64a85b9072349e8f1c23dd27df5c7e6465619f56a31d454"
+
+is_known_legacy() {
+  digest=$1
+  digests=${2-}
+  for candidate in $digests; do
+    [ "$digest" = "$candidate" ] && return 0
+  done
+  return 1
 }
 
-report_preflight_error() {
-  printf '%s\n' "ERROR: $*" >&2
-  preflight_failed=1
-}
-
-path_exists() {
-  [ -e "$1" ] || [ -L "$1" ]
-}
-
-sha256_file() {
-  shasum -a 256 "$1" 2>/dev/null | awk 'NF >= 1 && length($1) == 64 { print $1; exit }'
-}
-
-classify_current_or_legacy() {
+classify() {
   destination=$1
   template=$2
-  legacy_digest=$3
-
+  legacy_digests=${3-}
   if ! path_exists "$destination"; then
     printf '%s\n' missing
   elif [ -L "$destination" ] || [ ! -f "$destination" ]; then
@@ -54,234 +94,71 @@ classify_current_or_legacy() {
     printf '%s\n' current
   else
     digest=$(sha256_file "$destination")
-    if [ -n "$legacy_digest" ] && [ "$digest" = "$legacy_digest" ]; then
+    if [ -n "$legacy_digests" ] && is_known_legacy "$digest" "$legacy_digests"; then
       printf '%s\n' legacy
-    elif [ -z "$digest" ]; then
-      printf '%s\n' unreadable
     else
       printf '%s\n' conflict
     fi
   fi
 }
 
-classify_legacy_luna() {
-  destination=$1
-
-  if ! path_exists "$destination"; then
-    printf '%s\n' missing
-  elif [ -L "$destination" ] || [ ! -f "$destination" ]; then
-    printf '%s\n' unsafe
-  else
-    digest=$(sha256_file "$destination")
-    if [ "$digest" = "$legacy_luna_sha256" ]; then
-      printf '%s\n' legacy
-    elif [ -z "$digest" ]; then
-      printf '%s\n' unreadable
-    else
-      printf '%s\n' conflict
-    fi
-  fi
-}
-
-same_state() {
+install_one() {
   label=$1
-  expected=$2
-  actual=$3
-  [ "$expected" = "$actual" ] || fail "$label changed after preflight; no further destination files were changed."
-}
+  template=$2
+  destination=$3
+  legacy_digests=${4-}
+  state=$(classify "$destination" "$template" "$legacy_digests")
 
-install_missing() {
-  template=$1
-  destination=$2
-  staged=''
-
-  if path_exists "$destination"; then
-    fail "destination changed after preflight and will not be overwritten: $destination"
+  if [ "$check_only" -eq 1 ]; then
+    [ "$state" = current ] || fail "$label template is $state, not current: $destination"
+    printf '%s\n' "CURRENT: $destination"
+    return
   fi
 
-  staged=$(mktemp "$target_dir/.sol-advisor-agent.XXXXXX") || fail "could not stage template for installation: $destination"
-  if ! cp "$template" "$staged"; then
-    rm -f "$staged"
-    fail "could not stage template for installation: $destination"
-  fi
-
-  if ! ln "$staged" "$destination"; then
-    rm -f "$staged"
-    fail "destination changed after preflight and will not be overwritten: $destination"
-  fi
-
-  rm -f "$staged" || fail "could not remove staged template after installation: $staged"
-  printf '%s\n' "INSTALLED: $destination"
-}
-
-replace_legacy_terra() {
-  staged=''
-
-  [ "$(classify_current_or_legacy "$terra_destination" "$terra_template" "$legacy_terra_sha256")" = legacy ] ||
-    fail "legacy Terra destination changed after preflight and will not be replaced: $terra_destination"
-
-  staged=$(mktemp "$target_dir/.sol-advisor-agent.XXXXXX") || fail "could not stage migrated Terra template: $terra_destination"
-  if ! cp "$terra_template" "$staged"; then
-    rm -f "$staged"
-    fail "could not stage migrated Terra template: $terra_destination"
-  fi
-
-  [ "$(classify_current_or_legacy "$terra_destination" "$terra_template" "$legacy_terra_sha256")" = legacy ] || {
-    rm -f "$staged"
-    fail "legacy Terra destination changed after preflight and will not be replaced: $terra_destination"
-  }
-
-  if ! mv -f "$staged" "$terra_destination"; then
-    rm -f "$staged"
-    fail "could not replace exact legacy Terra template: $terra_destination"
-  fi
-
-  printf '%s\n' "MIGRATED: $terra_destination"
-}
-
-remove_legacy_luna() {
-  [ "$(classify_legacy_luna "$luna_destination")" = legacy ] ||
-    fail "legacy Luna destination changed after preflight and will not be removed: $luna_destination"
-  rm "$luna_destination" || fail "could not remove exact legacy Luna template: $luna_destination"
-  printf '%s\n' "REMOVED LEGACY: $luna_destination"
-}
-
-script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd) || exit 1
-template_dir=$script_dir/../agents
-
-if [ -n "${CODEX_HOME-}" ]; then
-  target_dir=$CODEX_HOME/agents
-else
-  [ -n "${HOME-}" ] || fail "HOME is unset and CODEX_HOME was not supplied; pass --target-dir explicitly."
-  target_dir=$HOME/.codex/agents
-fi
-
-check_only=0
-
-while [ "$#" -gt 0 ]; do
-  case "$1" in
-    --target-dir)
-      [ "$#" -ge 2 ] || fail "--target-dir requires a path."
-      [ -n "$2" ] || fail "--target-dir requires a non-empty path."
-      case "$2" in
-        --*) fail "--target-dir path must be explicit; prefix an option-like relative name with ./ or use an absolute path." ;;
-      esac
-      target_dir=$2
-      shift 2
+  case "$state" in
+    current) printf '%s\n' "ALREADY CURRENT: $destination" ;;
+    missing)
+      cp "$template" "$destination" || fail "could not install $label: $destination"
+      printf '%s\n' "INSTALLED: $destination"
       ;;
-    --check)
-      check_only=1
-      shift
+    legacy)
+      cp "$template" "$destination" || fail "could not migrate $label: $destination"
+      printf '%s\n' "MIGRATED: $destination"
       ;;
-    --help|-h)
-      usage
-      exit 0
-      ;;
-    *)
-      fail "unknown argument: $1 (run with --help for usage)."
-      ;;
+    *) fail "$label destination is $state and will not be overwritten: $destination" ;;
   esac
+}
+
+for template in \
+  "$template_dir/$luna_low_file" \
+  "$template_dir/$luna_file" \
+  "$template_dir/$terra_file" \
+  "$template_dir/$terra_high_consultant_file" \
+  "$template_dir/$sol_low_consultant_file" \
+  "$template_dir/$sol_medium_consultant_file" \
+  "$template_dir/$sol_impl_file" \
+  "$template_dir/$sol_review_file"
+do
+  [ -f "$template" ] && [ ! -L "$template" ] || fail "missing or unsafe shipped template: $template"
 done
-
-case "$target_dir" in
-  /*) ;;
-  *) target_dir=$(pwd -P)/$target_dir ;;
-esac
-
-case "$target_dir" in
-  /|//) fail "refusing to use the filesystem root as an agent target directory." ;;
-esac
-
-terra_file=sol-advisor-terra-implementer.toml
-sol_file=sol-advisor-sol-reviewer.toml
-luna_file=sol-advisor-luna-implementer.toml
-terra_template=$template_dir/$terra_file
-sol_template=$template_dir/$sol_file
-terra_destination=$target_dir/$terra_file
-sol_destination=$target_dir/$sol_file
-luna_destination=$target_dir/$luna_file
-
-# Immutable v0.2.0 byte digests, calculated from:
-# git show HEAD:plugins/sol-advisor/agents/sol-advisor-luna-implementer.toml | shasum -a 256
-# git show HEAD:plugins/sol-advisor/agents/sol-advisor-terra-implementer.toml | shasum -a 256
-legacy_luna_sha256=fba1b42849d93737e83b094a2ab0b1611f87ac37db7438c8bbdf581f0813f8eb
-legacy_terra_sha256=4425a8c1f21ce8c6af93f96adc253bbc33ea301f1389b3fa8ce350be08584eca
-
-for template in "$terra_template" "$sol_template"; do
-  [ -f "$template" ] && [ ! -L "$template" ] ||
-    fail "shipped template is missing or not a regular file: $template"
-done
-
-preflight_failed=0
-if path_exists "$target_dir"; then
-  if [ -L "$target_dir" ] || [ ! -d "$target_dir" ]; then
-    report_preflight_error "target directory is not a real directory: $target_dir"
-  fi
-fi
-
-terra_state=$(classify_current_or_legacy "$terra_destination" "$terra_template" "$legacy_terra_sha256")
-sol_state=$(classify_current_or_legacy "$sol_destination" "$sol_template" '')
-luna_state=$(classify_legacy_luna "$luna_destination")
-
-if [ "$check_only" -eq 1 ]; then
-  [ "$terra_state" = current ] ||
-    report_preflight_error "Terra template is $terra_state, not the current exact file: $terra_destination"
-  [ "$sol_state" = current ] ||
-    report_preflight_error "Sol template is $sol_state, not the current exact file: $sol_destination"
-  [ "$luna_state" = missing ] ||
-    report_preflight_error "legacy Luna file remains or is unsafe: $luna_destination"
-else
-  case "$terra_state" in
-    current|legacy|missing) ;;
-    *) report_preflight_error "Terra destination is $terra_state and will not be replaced: $terra_destination" ;;
-  esac
-  case "$sol_state" in
-    current|missing) ;;
-    *) report_preflight_error "Sol destination is $sol_state and will not be replaced: $sol_destination" ;;
-  esac
-  case "$luna_state" in
-    missing|legacy) ;;
-    *) report_preflight_error "legacy Luna destination is $luna_state and will not be removed: $luna_destination" ;;
-  esac
-fi
-
-[ "$preflight_failed" -eq 0 ] || exit 1
-
-if [ "$check_only" -eq 1 ]; then
-  printf '%s\n' "CHECK PASSED: Terra and Sol exactly match $template_dir; no legacy Luna file remains."
-  exit 0
-fi
 
 if [ ! -d "$target_dir" ]; then
+  [ "$check_only" -eq 0 ] || fail "target directory does not exist: $target_dir"
   mkdir -p "$target_dir" || fail "could not create target directory: $target_dir"
 fi
-[ -d "$target_dir" ] && [ ! -L "$target_dir" ] ||
-  fail "target directory changed after preflight: $target_dir"
+[ -d "$target_dir" ] && [ ! -L "$target_dir" ] || fail "target is not a real directory: $target_dir"
 
-same_state Terra "$terra_state" "$(classify_current_or_legacy "$terra_destination" "$terra_template" "$legacy_terra_sha256")"
-same_state Sol "$sol_state" "$(classify_current_or_legacy "$sol_destination" "$sol_template" '')"
-same_state "legacy Luna" "$luna_state" "$(classify_legacy_luna "$luna_destination")"
+install_one "Luna low" "$template_dir/$luna_low_file" "$target_dir/$luna_low_file"
+install_one "Luna medium" "$template_dir/$luna_file" "$target_dir/$luna_file" "$legacy_luna_sha256s"
+install_one "Terra medium implementer" "$template_dir/$terra_file" "$target_dir/$terra_file" "$legacy_terra_sha256s"
+install_one "Terra high consultant" "$template_dir/$terra_high_consultant_file" "$target_dir/$terra_high_consultant_file"
+install_one "Sol low consultant" "$template_dir/$sol_low_consultant_file" "$target_dir/$sol_low_consultant_file"
+install_one "Sol medium consultant" "$template_dir/$sol_medium_consultant_file" "$target_dir/$sol_medium_consultant_file"
+install_one "Sol implementer" "$template_dir/$sol_impl_file" "$target_dir/$sol_impl_file"
+install_one "Sol reviewer" "$template_dir/$sol_review_file" "$target_dir/$sol_review_file"
 
-case "$terra_state" in
-  missing) install_missing "$terra_template" "$terra_destination" ;;
-  legacy) replace_legacy_terra ;;
-  current) printf '%s\n' "ALREADY CURRENT: $terra_destination" ;;
-esac
-
-case "$sol_state" in
-  missing) install_missing "$sol_template" "$sol_destination" ;;
-  current) printf '%s\n' "ALREADY CURRENT: $sol_destination" ;;
-esac
-
-if [ "$luna_state" = legacy ]; then
-  remove_legacy_luna
+if [ "$check_only" -eq 1 ]; then
+  printf '%s\n' "CHECK PASSED: all eight Sol Advisor native roles match exactly."
+else
+  printf '%s\n' "INSTALL PASSED: all eight Sol Advisor native roles are current."
 fi
-
-[ "$(classify_current_or_legacy "$terra_destination" "$terra_template" "$legacy_terra_sha256")" = current ] ||
-  fail "post-install exactness check failed: $terra_destination"
-[ "$(classify_current_or_legacy "$sol_destination" "$sol_template" '')" = current ] ||
-  fail "post-install exactness check failed: $sol_destination"
-[ "$(classify_legacy_luna "$luna_destination")" = missing ] ||
-  fail "post-install legacy removal check failed: $luna_destination"
-
-printf '%s\n' "INSTALL PASSED: Terra and Sol exactly match $template_dir; no legacy Luna file remains."
